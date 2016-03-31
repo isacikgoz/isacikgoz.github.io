@@ -1,0 +1,189 @@
+/* Structure & Background
+----------------------------- */
+.wrapper {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-image: url('bg.jpg');
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  text-align: center;
+  text-rendering: optimizeLegibility;
+}
+.wrapper:before {
+  content: '';
+  display: inline-block;
+  height: 100%;
+  vertical-align: middle;
+  margin-right: -0.25em;
+}
+.wrapper:after {
+  content: '';
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  border: 1px solid rgba(255,255,255,.2);
+}
+.wrapper-inner {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  z-index: 2;
+  margin-top: -4%;
+  max-width: 80%;
+}
+.wrapper-inner:before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 337px;
+  height: 337px;
+  left: 50%;
+  top: 50%;
+  margin-left: -168px;
+  margin-top: -168px;
+  background-image: url(images/circle-gray.png);
+  background-size: 100%;
+}
+.heart-icon {
+  display: inline-block;
+  vertical-align: middle;
+  z-index: 3;
+  max-height: 15px;
+}
+
+/* Type
+----------------------------- */
+.name {
+  position: relative;
+  z-index: 2;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0.26em;
+  font-weight: 300;
+  font-style: italic;
+  font-family: "freight-big-pro";
+  margin-bottom: 0;
+  margin-top: 28px;
+  text-transform: uppercase;
+}
+.byline {
+  margin-top: 2px;
+  position: relative;
+  z-index: 2;
+  font-family: "brandon-grotesque";
+  font-size: 13px;
+  line-height: 2.2;
+  font-weight: 300;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+.divider {
+  width: 80px;
+  margin-top: 75px;
+  border-color: rgba(255,255,255,.3);
+  border-width: 0;
+  border-bottom-width: 1px;
+}
+
+/* Social Links
+----------------------------- */
+.social-links {
+  position: fixed;
+  width: 475px;
+  left: 50%;
+  bottom: 50px;
+  margin-left: -237px;
+  padding: 0;
+  list-style-type: none;
+}
+.social-links > li {
+  display: inline-block;
+}
+.social-link-item {
+  display: inline-block;
+  background-image: url(images/icons.png);
+  height: 20px;
+  background-size: 123px 20px;
+  text-indent: -9999px;
+  margin-left: 15px;
+  opacity: .4;
+  -webkit-transition: all .1s ease-in;
+}
+.social-links .email-link-outer {
+  margin-top: 10px;
+  display: block;
+} 
+.email-link {
+  color: #fff;
+  font-size: 15px;
+  text-decoration: none;
+  font-family: "Helvetica, Arial, sans";
+  opacity: .5;
+  -webkit-transition: opacity .1s ease-in;
+}
+.email-link:hover,
+.email-link:focus {
+  opacity: 1;
+} 
+.social-link-item:hover{
+  opacity: 1;
+}
+.social-link-item-twitter {
+  margin-left: 0;
+  width: 21px;
+}
+.social-link-item-linkedin {
+  background-position: -21px 0;
+  width: 19px;
+}
+.social-link-item-github {
+  background-position: -40px 0;
+  width: 18px;
+}
+.social-link-item-dribbble {
+  background-position: -58px 0;
+  width: 21px;
+}
+.social-link-item-instagram {
+  background-position: -78px 0;
+  width: 22px;
+}
+.social-link-item-medium {
+  background-position: -100px 0;
+  width: 23px;
+}
+
+@media (max-width: 600px) {
+  .name {
+    font-size: 30px;
+    letter-spacing: 0.2em;
+  }
+}
+@media (max-width: 400px) {
+  .name {
+    margin-top: 20px;
+    font-size: 24px;
+    letter-spacing: 0.1em;
+  }
+  .byline {
+    font-size: 12px;
+    letter-spacing: 0.2em;
+  }
+  .wrapper-inner {
+    margin-top: -20%;
+  }
+  .wrapper-inner:before {
+    width: 200px;
+    height: 200px;
+    margin-left: -100px;
+    margin-top: -100px;
+  }
+}
