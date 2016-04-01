@@ -22,12 +22,7 @@
 }
 .wrapper:after {
   content: '';
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  bottom: 10px;
-  left: 10px;
-  border: 1px solid rgba(255,255,255,.2);
+  position: absolute
 }
 .wrapper-inner {
   position: relative;
@@ -102,11 +97,6 @@
 .footer-area:after {
   content: '';
   position: absolute;
-  top: 10px;
-  right: 10px;
-  bottom: 10px;
-  left: 10px;
-  border: 1px solid rgba(255,255,255,.2);
 }
 
 /* Type
