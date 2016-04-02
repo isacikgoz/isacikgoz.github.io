@@ -111,7 +111,7 @@
   font-family: “calluna”,serif;
 }
 .content h1 {
-  color: black;
+  color: #3d3d5c;
   margin-top: 1em;
   padding-top: 1em;
   padding-bottom: 0.3em;
@@ -126,7 +126,8 @@
 }
 .blog-text{
   color: #3d3d5c;
-  font-size: 1.1em;
+  font-size: 1em;
+  line-height: 1.25em;
   font-weight: light;
 }
 .divider {
