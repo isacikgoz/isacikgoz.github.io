@@ -90,7 +90,7 @@
   letter-spacing: 0.26em;
   font-weight: 300;
   font-style: italic;
-  font-family: “calluna”,serif;
+  font-family: “calluna”;
   margin-bottom: 0;
   margin-top: 28px;
   text-transform: uppercase;
@@ -99,7 +99,7 @@
   margin-top: 2px;
   position: relative;
   z-index: 2;
-  font-family: “calluna”,serif;
+  font-family: “calluna”;
   font-size: 13px;
   line-height: 2.2;
   font-weight: 300;
@@ -111,7 +111,7 @@
   z-index: 2;
   line-height: 1;
   letter-spacing: 0.06em;
-  font-family: “calluna”,sans-serif;
+  font-family: “calluna”;
 }
 .content h1 {
   color: #3d3d5c;
@@ -210,7 +210,7 @@
 
   color: #fff;
   font-size: 15px;
-  font-family: “calluna”,serif;
+  font-family: “calluna”;
   line-height: 1.5;
   margin-top: 20px;
   letter-spacing: 0.07em;
