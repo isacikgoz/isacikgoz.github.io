@@ -79,9 +79,9 @@
 
 /* Type
 ----------------------------- */
-@font-face {
-  font-family: “calluna”;
-} 
+.tk-calluna {
+font-family:"calluna",serif;
+}
 .name {
   position: relative;
   z-index: 2;
