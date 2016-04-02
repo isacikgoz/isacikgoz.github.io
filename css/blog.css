@@ -119,12 +119,7 @@
   z-index: 2;
   font-size: 12px;
   line-height: 1;
-  letter-spacing: 0.16em;
-  font-weight: 300;
-  font-family: "times";
-  margin-bottom: 0;
-  /*margin-top: 28px;*/
-  /*text-transform: uppercase;*/
+  letter-spacing: 0.06em;
 }
 .byline {
   margin-top: 2px;
