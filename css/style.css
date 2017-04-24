@@ -429,6 +429,9 @@
   border-bottom: none;
   padding: 9px 8px 0px 8px;
 }
+.timeline ul {
+  padding: 0px !important;
+}
 .timeline ul li {
   list-style-type: none;
   position: relative;
@@ -452,7 +455,7 @@
   position: relative;
   bottom: 0;
   width: 250px;
-  padding: 15px;
+  padding: 10px;
   background: #3c3c3d;
   border-radius: 5px;
 }
