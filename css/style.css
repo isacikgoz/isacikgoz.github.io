@@ -840,6 +840,8 @@ img {
   clear: both;
   text-align: right;
   padding-top: 1rem;
+  max-width: 20em;
+  float: right;
 }
 #header-post #toc a:hover {
   color: #d480aa;
