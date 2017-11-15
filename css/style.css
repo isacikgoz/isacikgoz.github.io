@@ -1060,22 +1060,22 @@ img {
     display: none;
   }
 }
-#sociallinks {
+#socialinfo {
   display: inline-block;
   list-style: none;
   padding: 0;
   margin: 0;
 }
-#sociallinks li {
+#socialinfo li {
   display: inline-block;
 }
-#sociallinks li:after {
+#socialinfo li:after {
   content: ", ";
 }
-#sociallinks li:last-child:after {
+#socialinfo li:last-child:after {
   content: "";
 }
-#sociallinks li:nth-last-child(2):after {
+#socialinfo li:nth-last-child(2):after {
   content: " and ";
 }
 .post-list {
