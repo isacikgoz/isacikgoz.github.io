@@ -1061,23 +1061,8 @@ img {
     display: none;
   }
 }
-#socialinfo {
+p#socialinfo {
   display: inline-block;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-#socialinfo li {
-  display: inline-block;
-}
-#socialinfo li:after {
-  content: ", ";
-}
-#socialinfo li:last-child:after {
-  content: "";
-}
-#socialinfo li:nth-last-child(2):after {
-  content: " and ";
 }
 .post-list {
   padding: 0;
