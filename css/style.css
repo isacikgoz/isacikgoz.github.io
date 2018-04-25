@@ -637,8 +637,13 @@ img {
 }
 @media screen and (max-width: 480px) {
   #header #title {
-    padding-top: 9px;
-    padding-bottom: 9px;
+    display: table;
+    margin-right: 5rem;
+    min-height: 50px;
+  }
+  #header #title h1 {
+    display: table-cell;
+    vertical-align: middle;
   }
   #header #nav ul a:hover {
     background: none;
