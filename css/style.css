@@ -458,9 +458,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
 }
-img {
-  box-shadow: 0.25em 0.25em 0.625em #0e0e0e;
-}
 .content {
   flex: 1;
 }
