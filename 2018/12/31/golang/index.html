@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang=en>
-<head><meta name="generator" content="Hexo 3.8.0">
+<head>
     <!-- so meta -->
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="HandheldFriendly" content="True">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <meta name="description" content="Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community">
 <meta property="og:type" content="article">
 <meta property="og:title" content="The Go effect after 7 years with Java">
@@ -14,7 +14,7 @@
 <meta property="og:description" content="Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community">
 <meta property="og:locale" content="en">
 <meta property="og:image" content="https://starcharts.herokuapp.com/isacikgoz/tldr.svg">
-<meta property="og:updated_time" content="2019-01-01T20:14:34.463Z">
+<meta property="og:updated_time" content="2019-01-03T07:17:30.231Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="The Go effect after 7 years with Java">
 <meta name="twitter:description" content="Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community">
@@ -70,7 +70,7 @@
         
       </ul>
     </span>
-    <br>
+    <br/>
     <span id="actions">
       <ul>
         
@@ -85,7 +85,7 @@
       <span id="i-top" class="info" style="display:none;">Back to top</span>
       <span id="i-share" class="info" style="display:none;">Share post</span>
     </span>
-    <br>
+    <br/>
     <div id="share" style="display: none">
       <ul>
   <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.medd/2018/12/31/golang/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
@@ -110,7 +110,7 @@
     
     <div class="content index py4">
         
-        <article class="post" itemscope="" itemtype="http://schema.org/BlogPosting">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
   <header>
     
     <h1 class="posttitle" itemprop="name headline">
@@ -120,7 +120,7 @@
 
 
     <div class="meta">
-      <span class="author" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
         <span itemprop="name">İbrahim Serdar's Blog</span>
       </span>
       
@@ -141,7 +141,7 @@
     <p>Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community. Hence, it was always an interesting topic for me. I don’t know when the exact time the spark is flamed but I found myself working on these side project after I came home from work till midnight. For a quick info, I’ve been working as a software engineer on a satellite ground station project. And I don’t have a single bit related to Go in my professional career. We use java, c++ and occasionally python.</p>
 <p>So let’s return to the topic; the effect beneath Go. As far as I can see, Go is complicated at the begining if you have a solid java-style background. The language itself has a little awkward syntax. But in time, eventually, you are getting used to it. If I supposed to compare it with java, for a public function(method) you write;<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> string <span class="title">getName</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">this</span>.name;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p>Go on the other hand;<br><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(m *MyStruct)</span> <span class="title">GetName</span><span class="params">()</span> <span class="title">string</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> m.name</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>As you can see, even with the simplest code snippets, with a java point of view, it is not so easy to get used to this syntax. But this is the initial feeling though. Also, lack of object-oriented paradigms such as polymorphism etc. makes you look at the computer screen meaningless. So I thought that it would be a better practice to see other peoples work and try to understand how they use the the language in real life problems. I visited many open source Go projects and noticed that Go developers write code with the shortest possible variable names, shortest possible function names. Java devs on the other hand, tend to be more verbose. Java-like coding is like writing a literature book. Reading java code requires less learning curve. Go; hard to start easy to sustain. At the begining I was struggling to understand the code snippets but now I’m getting used to it. I’m sure that there are many writings about how Go has different syntax than X language or differences between functional programming and object-orinted programming. This comparison is a little out of my topic but still worth to mention a little.</p>
+<p>As you can see, even with the simplest code snippets, with a java point of view, it is not so easy to get used to this syntax. But this is the initial feeling though. Also, lack of object-oriented paradigms such as inheritance etc. makes you look at the computer screen meaningless. So I thought that it would be a better practice to see other peoples work and try to understand how they use the the language in real life problems. I visited many open source Go projects and noticed that Go developers write code with the shortest possible variable names, shortest possible function names. Java devs on the other hand, tend to be more verbose. Java-like coding is like writing a literature book. Reading java code requires less learning curve. Go; hard to start easy to sustain. At the begining I was struggling to understand the code snippets but now I’m getting used to it. I’m sure that there are many writings about how Go has different syntax than X language or differences between functional programming and object-orinted programming. This comparison is a little out of my topic but still worth to mention a little.</p>
 <p>My verdict on Go is that it is far more practical when it comes to create “something”. I mean, you have an idea, you want to see quick results without concerning code-style or any architectural things, Go gives you the oppurtinty to do your job swiftly. Not much boilerplates. Once you create the “thing”, you see that the program is actually fast, reliable and easy to distribute. You don’t need much effort to turn it into an actual product. I had an idea of making a Go client of <a href="https://github.com/tldr-pages/tldr" target="_blank" rel="noopener">tldr-pages</a>. Altough there are plenty of same clients, I had a different idea to make it more and more user-friendly. It didn’t take more than 3 nights to create minimum viable product. When I published the pre-release version at third night, the repository had 9 commits and roughly 700 lines of code. It was nearly a ready product and when I showcased in some subreddits such as r/linux or r/golang it quickly took attention. It was very easy to create executable binaries via go build, so I wrote a bash script to create binaries for every mainstream platform and architecture. The script also compresses the files, runs a sha256 checksum and writes to a file. The <a href="https://gist.github.com/isacikgoz/72bf1c48728cded3230023d20ebd7069" target="_blank" rel="noopener">script</a> is also 40 lines of code. The project development was blazing fast, I had an idea and created a tool that is actually distributable and had positive feedback from the community. And I was not the pioneer of the idea of tldr-pages. Maybe the 50. client.</p>
 <p>So what about the actual product? (<a href="https://github.com/isacikgoz/tldr" target="_blank" rel="noopener">tldr++</a>) It is easily integrated to CI process, adopted from community and become a very user-friendly client. Also, performance-wise it is the fastest client. And offers much more functionality than others. The actual performance results are shown in the table below:</p>
 <table>
