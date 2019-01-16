@@ -1,0 +1,56 @@
+==================================================================
+https://keybase.io/isacikgoz
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of http://isacikgoz.me
+  * I am isacikgoz (https://keybase.io/isacikgoz) on keybase.
+  * I have a public key ASANukKeF-UM0eOvZJ8sBYoxlcnAYiMEDcjTDRFRzxjDsQo
+
+To do so, I am signing this object:
+
+{
+  "body": {
+    "key": {
+      "eldest_kid": "01200dba429e17e50cd1e3af649f2c058a3195c9c06223040dc8d30d1151cf18c3b10a",
+      "host": "keybase.io",
+      "kid": "01200dba429e17e50cd1e3af649f2c058a3195c9c06223040dc8d30d1151cf18c3b10a",
+      "uid": "379f9390645b2cb0eca988a96a973719",
+      "username": "isacikgoz"
+    },
+    "merkle_root": {
+      "ctime": 1547673442,
+      "hash": "fb9d8d1e26432456f20c3607a6c74cdf9902783916c52954fd75d97699d091570265a0a1dc06e08aacdc90be4ded42b02980289ae8acd7ff2a470c58420945ee",
+      "hash_meta": "8e2f16bdeb2d807792ac5d7c127a1c9d28ac74ef3a52aeed19b27b06fd9a29c6",
+      "seqno": 4436180
+    },
+    "service": {
+      "entropy": "UeS4eozCpNRKxEGdI4kzDGo4",
+      "hostname": "isacikgoz.me",
+      "protocol": "http:"
+    },
+    "type": "web_service_binding",
+    "version": 2
+  },
+  "client": {
+    "name": "keybase.io go client",
+    "version": "2.13.1"
+  },
+  "ctime": 1547673449,
+  "expire_in": 504576000,
+  "prev": "8b25970f3a7629d65145528a370e0b51d0ebfc275fbb5cde4b377a3dc15b8421",
+  "seqno": 5,
+  "tag": "signature"
+}
+
+which yields the signature:
+
+hKRib2R5hqhkZXRhY2hlZMOpaGFzaF90eXBlCqNrZXnEIwEgDbpCnhflDNHjr2SfLAWKMZXJwGIjBA3I0w0RUc8Yw7EKp3BheWxvYWTESpcCBcQgiyWXDzp2KdZRRVKKNw4LUdDr/Cdfu1zeSzd6PcFbhCHEIIPNdiHZLftrMh0udwJL/opbhrOv5bAOr1AxAsq8ijLHAgHCo3NpZ8RAwknk9LH4jZ9otMh+kgqh3Sfoikk32cRdhRIvNMAEVwH24sFT+s8yOebP5+xDzxRTcFwy+VmcTdNMearZY67sC6hzaWdfdHlwZSCkaGFzaIKkdHlwZQildmFsdWXEIJuXl/jIYvOvCaQnWbCUi7qbqVR80X8ajrEOHNo89JYQo3RhZ80CAqd2ZXJzaW9uAQ==
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/isacikgoz
+
+==================================================================
