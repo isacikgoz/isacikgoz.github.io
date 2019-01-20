@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="For many years we were using monorepo for each application in my organization. Now, we are using polyrepo successfully for 4 years already. Polyrepo concept is; instead of using a big single repositor">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dealing With The Polyrepo Concept">
+<meta property="og:url" content="http://isacikgoz.me/2019/01/21/polyrepo/index.html">
+<meta property="og:site_name" content="İbrahim Serdar&#39;s Blog">
+<meta property="og:description" content="For many years we were using monorepo for each application in my organization. Now, we are using polyrepo successfully for 4 years already. Polyrepo concept is; instead of using a big single repositor">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="http://isacikgoz.me/images/commits2.jpg">
+<meta property="og:image" content="http://isacikgoz.me/images/homebrew.jpg">
+<meta property="og:image" content="http://isacikgoz.me/images/conclusion.jpg">
+<meta property="og:updated_time" content="2019-01-20T19:06:25.984Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Dealing With The Polyrepo Concept">
+<meta name="twitter:description" content="For many years we were using monorepo for each application in my organization. Now, we are using polyrepo successfully for 4 years already. Polyrepo concept is; instead of using a big single repositor">
+<meta name="twitter:image" content="http://isacikgoz.me/images/commits2.jpg">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>Dealing With The Polyrepo Concept</title>
+    <!-- styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- persian styles -->
+    
+      <link rel="stylesheet" href="/css/rtl.css">
+    
+    <!-- rss -->
+    
+    
+</head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">Home</a></li>
+         
+          <li><a href="/archives/">Writing</a></li>
+         
+          <li><a href="http://github.com/isacikgoz">Projects</a></li>
+         
+          <li><a href="/Search/">Search</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" href="/2019/01/01/farewell-2018/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2019/01/21/polyrepo/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://isacikgoz.me/2019/01/21/polyrepo/&text=Dealing With The Polyrepo Concept"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2019/01/21/polyrepo/&is_video=false&description=Dealing With The Polyrepo Concept"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Dealing With The Polyrepo Concept&body=Check out this article: http://isacikgoz.me/2019/01/21/polyrepo/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2019/01/21/polyrepo/&name=Dealing With The Polyrepo Concept&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#The-software-we-deal"><span class="toc-number">1.</span> <span class="toc-text">The software we deal</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#What-have-we-done"><span class="toc-number">2.</span> <span class="toc-text">What have we done?</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Drawbacks"><span class="toc-number">3.</span> <span class="toc-text">Drawbacks</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Conclusion"><span class="toc-number">4.</span> <span class="toc-text">Conclusion</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        Dealing With The Polyrepo Concept
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">İbrahim Serdar's Blog</span>
+      </span>
+      
+    <div class="postdate">
+        <time datetime="2019-01-21T15:54:37.000Z" itemprop="datePublished">2019-01-21</time>
+    </div>
+
+
+      
+
+      
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p><img src="/images/commits2.jpg" alt=""><br>For many years we were using monorepo for each application in my organization. Now, we are using polyrepo successfully for 4 years already. Polyrepo concept is; instead of using a big single repository, dividing the codebase into multiple repositories. Almost every open source project on GitHub manages their code with monorepo fashion. I haven’t witnessed but many gigantic organizations do the same. There is a great <a href="https://medium.com/@mattklein123/monorepos-please-dont-e9a279be011b" target="_blank" rel="noopener">article</a> about why you shouldn’t use monorepo and I strongly recommend reading that article before you continue reading this. The concept of monorepo is yet straightforward but drops a bulky VCS to a configuration specialist. Generally, that role is filled by a senior engineer. This article is about what we have achieved with the polyrepo concept.</p>
+<h2 id="The-software-we-deal"><a href="#The-software-we-deal" class="headerlink" title="The software we deal"></a>The software we deal</h2><p>Although we are not a very large team (roughly 30 developers) we develop 8 software entities which many of them are designed with a client-server architecture. We develop ground station software for both GEO (Communication) and LEO (Earth Observation) satellites. Some of our software used on both GEO and LEO. Nonetheless, that makes roughly 16 independent applications.</p>
+<p>The software entities are:</p>
+<ul>
+<li>Satellite Command &amp; Control Software</li>
+<li>Archive and Data Analysis Software</li>
+<li>Satellite Mission Planning Software</li>
+<li>Payload Configuration Software</li>
+<li>Orbit Control Software</li>
+<li>Payload Data Processing Software</li>
+<li>Orbit Dynamics Service</li>
+</ul>
+<h2 id="What-have-we-done"><a href="#What-have-we-done" class="headerlink" title="What have we done?"></a>What have we done?</h2><p>We were already using a monorepo for each software, we split each into at least 3-4 independent repositories. First, we created an independent repo for each application for its API. The API is required if any of that software will communicate to each other. Then, a repository for the client, one for the server and sometimes a <em>common</em> repo for data structs that used in both client and server. Some repositories such as <em>messaging</em>, <em>security</em> etc. are used by every application and they also have a separate repository for themselves. That makes roughly 25-30 individual repositories.</p>
+<p>In this case, a single component of the software consists of at least 4 repositories:</p>
+<ul>
+<li>Messaging</li>
+<li>Security</li>
+<li>API</li>
+<li>Itself<br>…</li>
+</ul>
+<p>In the beginning, it seems hard to build and discouraging to make a change. I can confidently say it’s not! Managing polyrepos is actually easier than monorepos. It reduces the complexity of the system. Since we have tests for each repository, the builds are quicker, and as a matter of fact, deployment is easier for minor changes. Since the repositories are smaller, tracking a change couldn’t be easier. I can admit that we heavily rely on tests, but testing makes easy to develop individual parts of the software. Apart from that let’s say if we have a lame part in the whole system, it is much easier to replace it with a new solution/approach.</p>
+<p>Monorepo on the other hand, development requires much more attention. Each feature has its own branch, and merging them is painful and sometimes it breaks other parts of the software. Versioning is awkward because a minor version introduces something new at only a little portion of the whole system and it is not so meaningful for the whole system. Tracking a change is not easy too, you may need a shovel and pickaxe to track a feature branch that merged in the past. Lastly, tests are squeezed into unit tests which sometimes does not makes any sense to write.</p>
+<p><img src="/images/homebrew.jpg" alt=""></p>
+<p><a href="https://github.com/Homebrew" target="_blank" rel="noopener">Homebrew</a> project is a good example for the polyrepo concept.</p>
+<p>I will compare the polyrepo concept to monorepo with the advantages of monorepo which stated on <a href="https://en.wikipedia.org/wiki/Monorepo" target="_blank" rel="noopener">Wikipedia</a> page.</p>
+<ul>
+<li><em>Ease of code reuse</em>: Polyrepo does not prevent that. In fact, it encourages it. You don’t need a package manager if you split to more than one repo. Just import them separately into your workspace.</li>
+<li><em>Simplified dependency management</em>: I also find polyrepo concept handles this issue better. The dependencies are better linked to where they are needed. And you don’t require all dependencies to change some part of the software.</li>
+<li><em>Atomic commits</em>: Most of the atomic commits does not have an impact on software’s overall design. That means you can do atomic commits on a repository that won’t impact to the interface or overall system design. It is not discouraged by the polyrepo approach. It also puts a safety lever to change interfaces between repositories. Converting an integer value to short value may seem atomic but if it is on the interface, I wouldn’t tell its a small change. And it should be reviewed and tested.</li>
+<li><em>Large-scale code refactoring</em>: This may be hard on polyrepo compared to monorepo but that doesn’t mean it is impossible. It is manageable if you work on a workspace that has all required repositories included.</li>
+<li><em>Collaboration across teams</em>: I don’t understand why monorepo has the advantage over polyrepo in terms of collaboration. You can still include the source of another repository into your workspace. That does not break anything. In fact, you can be sure that master branch is always stable and you can checkout to development branch of included repository to test new features. It is couldn’t be better in terms of collaboration.</li>
+</ul>
+<h2 id="Drawbacks"><a href="#Drawbacks" class="headerlink" title="Drawbacks"></a>Drawbacks</h2><p>As far as I observed, the polyrepo concept has some drawbacks too. I’ll go over some of them.</p>
+<ol>
+<li><p>Issue tracking is hard. We use self-hosted GitLab and it is a great tool. We barely require an additional task management tool. Since we have many repositories related to a single application, the issue management is complicated. It is hard to decide where to open an issue for an overall feature request or a bug report.</p>
+</li>
+<li><p>Keeping all repositories up-to-date related to an application. Just for this, I wrote an application to do this job better. <a href="https://github.com/isacikgoz/gitbatch" target="_blank" rel="noopener">gitbatch</a> helps to manage hundreds of repositories. (i.e. sync with remote, merge latest changes, see changes across multiple repositories, etc.)</p>
+</li>
+<li><p>It’s not easy to just clone and start developing. First, you need to clone all required repositories and link them into a single workspace. Also, you may need to read the instructions of each repository to understand the requirements to build those repositories.</p>
+</li>
+</ol>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p><img src="/images/conclusion.jpg" alt=""></p>
+<p>We are using the polyrepo approach with tens of engineers across multiple teams now for almost four years. It works great for us and we’re planning to stick on the polyrepo concept for a foreseeable future. As far as it goes, we got used to it. We do not miss monorepo in any sense. With this approach, we have testable repositories. Better version control on components of a single application. We also have integration tests so that merging into master branch won’t break something on the system. Let it be admitted that we have more labor on version control but it’s well worth it. Scaling our VCS is easier now.</p>
+<p><em>I would like to hear your thoughts about this post. If you want to share with me, you can find me on <a href="https://twitter.com/isacikgoz" target="_blank" rel="noopener">Twitter</a>.</em></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">Home</a></li>
+         
+          <li><a href="/archives/">Writing</a></li>
+         
+          <li><a href="http://github.com/isacikgoz">Projects</a></li>
+         
+          <li><a href="/Search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#The-software-we-deal"><span class="toc-number">1.</span> <span class="toc-text">The software we deal</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#What-have-we-done"><span class="toc-number">2.</span> <span class="toc-text">What have we done?</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Drawbacks"><span class="toc-number">3.</span> <span class="toc-text">Drawbacks</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Conclusion"><span class="toc-number">4.</span> <span class="toc-text">Conclusion</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2019/01/21/polyrepo/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://isacikgoz.me/2019/01/21/polyrepo/&text=Dealing With The Polyrepo Concept"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2019/01/21/polyrepo/&is_video=false&description=Dealing With The Polyrepo Concept"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Dealing With The Polyrepo Concept&body=Check out this article: http://isacikgoz.me/2019/01/21/polyrepo/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://isacikgoz.me/2019/01/21/polyrepo/&title=Dealing With The Polyrepo Concept"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2019/01/21/polyrepo/&name=Dealing With The Polyrepo Concept&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2019 İbrahim Serdar Açıkgöz
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">Home</a></li>
+         
+          <li><a href="/archives/">Writing</a></li>
+         
+          <li><a href="http://github.com/isacikgoz">Projects</a></li>
+         
+          <li><a href="/Search/">Search</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+</body>
+</html>
+<!-- styles -->
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+<!-- jquery -->
+<script src="/lib/jquery/jquery.min.js"></script>
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+<script src="/js/main.js"></script>
+<!-- search -->
+
+<!-- Google Analytics -->
+
+    <script type="text/javascript">
+        (function(i,s,o,g,r,a,m) {i['GoogleAnalyticsObject']=r;i[r]=i[r]||function() {
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-97833654-1', 'auto');
+        ga('send', 'pageview');
+    </script>
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
