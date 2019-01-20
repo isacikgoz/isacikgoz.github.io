@@ -16,7 +16,7 @@
 <meta property="og:image" content="http://isacikgoz.me/images/commits2.jpg">
 <meta property="og:image" content="http://isacikgoz.me/images/homebrew.jpg">
 <meta property="og:image" content="http://isacikgoz.me/images/conclusion.jpg">
-<meta property="og:updated_time" content="2019-01-20T19:06:25.984Z">
+<meta property="og:updated_time" content="2019-01-20T20:52:55.848Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Dealing With The Polyrepo Concept">
 <meta name="twitter:description" content="For many years we were using monorepo for each application in my organization. Now, we are using polyrepo successfully for 4 years already. Polyrepo concept is; instead of using a big single repositor">
@@ -161,7 +161,7 @@
 <li>Itself<br>…</li>
 </ul>
 <p>In the beginning, it seems hard to build and discouraging to make a change. I can confidently say it’s not! Managing polyrepos is actually easier than monorepos. It reduces the complexity of the system. Since we have tests for each repository, the builds are quicker, and as a matter of fact, deployment is easier for minor changes. Since the repositories are smaller, tracking a change couldn’t be easier. I can admit that we heavily rely on tests, but testing makes easy to develop individual parts of the software. Apart from that let’s say if we have a lame part in the whole system, it is much easier to replace it with a new solution/approach.</p>
-<p>Monorepo on the other hand, development requires much more attention. Each feature has its own branch, and merging them is painful and sometimes it breaks other parts of the software. Versioning is awkward because a minor version introduces something new at only a little portion of the whole system and it is not so meaningful for the whole system. Tracking a change is not easy too, you may need a shovel and pickaxe to track a feature branch that merged in the past. Lastly, tests are squeezed into unit tests which sometimes does not makes any sense to write.</p>
+<p>Monorepo on the other hand, development requires much more attention. Each feature has its own branch, and merging them is painful and sometimes it breaks other parts of the software. Versioning is awkward because a minor version introduces something new at only a little portion of the whole system and it is not so meaningful for the whole system. Tracking a change is not easy too, you may need a shovel and a pickaxe to track a feature branch that merged in the past. Lastly, tests are squeezed into unit tests which sometimes does not makes any sense to write.</p>
 <p><img src="/images/homebrew.jpg" alt=""></p>
 <p><a href="https://github.com/Homebrew" target="_blank" rel="noopener">Homebrew</a> project is a good example for the polyrepo concept.</p>
 <p>I will compare the polyrepo concept to monorepo with the advantages of monorepo which stated on <a href="https://en.wikipedia.org/wiki/Monorepo" target="_blank" rel="noopener">Wikipedia</a> page.</p>
@@ -170,7 +170,7 @@
 <li><em>Simplified dependency management</em>: I also find polyrepo concept handles this issue better. The dependencies are better linked to where they are needed. And you don’t require all dependencies to change some part of the software.</li>
 <li><em>Atomic commits</em>: Most of the atomic commits does not have an impact on software’s overall design. That means you can do atomic commits on a repository that won’t impact to the interface or overall system design. It is not discouraged by the polyrepo approach. It also puts a safety lever to change interfaces between repositories. Converting an integer value to short value may seem atomic but if it is on the interface, I wouldn’t tell its a small change. And it should be reviewed and tested.</li>
 <li><em>Large-scale code refactoring</em>: This may be hard on polyrepo compared to monorepo but that doesn’t mean it is impossible. It is manageable if you work on a workspace that has all required repositories included.</li>
-<li><em>Collaboration across teams</em>: I don’t understand why monorepo has the advantage over polyrepo in terms of collaboration. You can still include the source of another repository into your workspace. That does not break anything. In fact, you can be sure that master branch is always stable and you can checkout to development branch of included repository to test new features. It is couldn’t be better in terms of collaboration.</li>
+<li><em>Collaboration across teams</em>: I don’t understand why monorepo has the advantage over polyrepo in terms of collaboration. You can still include the source of another repository into your workspace. That does not break anything. In fact, you can be sure that master branch is always stable and you can checkout to development branch of included repository to test new features. I find the polyrepo concept is better in terms of collaboration.</li>
 </ul>
 <h2 id="Drawbacks"><a href="#Drawbacks" class="headerlink" title="Drawbacks"></a>Drawbacks</h2><p>As far as I observed, the polyrepo concept has some drawbacks too. I’ll go over some of them.</p>
 <ol>
