@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="As I mentioned in my previous blog post, I was not so happy with gitin’s state. First of all, from a maintenance point of view, it was a dependency hell. Also, it had a really complex code that tries">
+<meta property="og:type" content="article">
+<meta property="og:title" content="About gitin v0.2">
+<meta property="og:url" content="http://isacikgoz.me/2019/06/12/gitin-v0-2/index.html">
+<meta property="og:site_name" content="İbrahim Serdar&#39;s Blog">
+<meta property="og:description" content="As I mentioned in my previous blog post, I was not so happy with gitin’s state. First of all, from a maintenance point of view, it was a dependency hell. Also, it had a really complex code that tries">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="http://isacikgoz.me/images/gitin_compare.png">
+<meta property="og:image" content="http://isacikgoz.me/images/gitin_help.png">
+<meta property="og:image" content="http://isacikgoz.me/images/gitin_search.png">
+<meta property="og:image" content="http://isacikgoz.me/images/gitin_branch.png">
+<meta property="og:updated_time" content="2019-06-12T19:32:41.236Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="About gitin v0.2">
+<meta name="twitter:description" content="As I mentioned in my previous blog post, I was not so happy with gitin’s state. First of all, from a maintenance point of view, it was a dependency hell. Also, it had a really complex code that tries">
+<meta name="twitter:image" content="http://isacikgoz.me/images/gitin_compare.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>About gitin v0.2</title>
+    <!-- styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- persian styles -->
+    
+      <link rel="stylesheet" href="/css/rtl.css">
+    
+    <!-- rss -->
+    
+    
+</head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">Home</a></li>
+         
+          <li><a href="/archives/">Writing</a></li>
+         
+          <li><a href="http://github.com/isacikgoz">Projects</a></li>
+         
+          <li><a href="/Search/">Search</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" href="/2019/03/01/roadmap-of-gitin/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2019/06/12/gitin-v0-2/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&text=About gitin v0.2"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&is_video=false&description=About gitin v0.2"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=About gitin v0.2&body=Check out this article: http://isacikgoz.me/2019/06/12/gitin-v0-2/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&name=About gitin v0.2&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        About gitin v0.2
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">İbrahim Serdar's Blog</span>
+      </span>
+      
+    <div class="postdate">
+        <time datetime="2019-06-12T12:01:36.000Z" itemprop="datePublished">2019-06-12</time>
+    </div>
+
+
+      
+
+      
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>As I mentioned in my previous blog post, I was not so happy with gitin’s state. First of all, from a maintenance point of view, it was a dependency hell. Also, it had a really complex code that tries to do some library to behave that is not meant to. For instance, the <a href="https://github.com/manifoldco/promptui" target="_blank" rel="noopener">promptui</a> library which is developed by <a href="https://github.com/manifoldco" target="_blank" rel="noopener">manifoldco</a> was not intended to have a use case like this. So I had to fork it and make patches to it. Even if I do that, I still had issues that I need to deal with. So it was really frustrating to get basic functionality. By the way, the library is really nice, I used several functions from it but it didn’t fit into my problem. And it is also worth to mention that documentation of that project is awesome.</p>
+<p>Also, the git package in gitin was not making me happy too. Because it was not following the separation of concerns discipline so it was messy. I really liked to use src-d/go-git while I was developing <a href="https://github.com/isacikgoz/gitbatch" target="_blank" rel="noopener">gitbatch</a> but it had some performance issues on my use cases so I couldn’t use it. Instead, I stick on libgit2/git2go to deal with a repository. The performance of <a href="https://github.com/libgit2/libgit2" target="_blank" rel="noopener">libgit2</a> is outstanding so I made the decision. But it was a little bit complicated at the beginning since the very nature of being a rookie on handling git repositories.</p>
+<p>So I started to develop the clone of gitin from scratch. I named it sig, to be shorter. Honestly, I prefer to use it as sig but that’s not a big deal. I started with some experiments to replace promptui for rendering. I managed to do so, it was really a nice thing that I got rid of my most complex dependency. After that, I started to re-write the git package as a separate project to use it in gitbatch also. Since I like the interface of go-git project, I created my own API to libgit2 with go-git’s approach. Which is hosted <a href="https://github.com/isacikgoz/libgit2-api" target="_blank" rel="noopener">here</a>. With these two improvements now I have much more control on software’s behavior and also it is much faster since I removed a lot of overhead. Also, I decided to use git with two different approaches; If I am going to read something from the repository I use libgit2 on the other hand if the user going to create an action such as doing a commit or request to read diff of a file I use git itself. This approach is much better than the previous one since it really reduced the complexity and also improved usability.</p>
+<p>Now the <a href="https://github.com/isacikgoz/gitin/tree/development" target="_blank" rel="noopener">development</a> branch of gitin is merged with the clone and it is ready for testing. It is not finished yet though. I want to improve the terminal interface and I still couldn’t find the best solution for printing the output to the terminal. The current code has some code duplications that needs to be reviewed and I want to support both colour output along with black and white output. This kind of changes won’t affect the behavior so not so important from a users point of view.</p>
+<p>It is worth to mention that I am going to drop pre-filter abilities (say flags of the branch, log and status commands) of gitin which were:</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">branchCommand       = pin.Command(<span class="string">"branch"</span>, <span class="string">"Checkout, list, or delete branches."</span>)</span><br><span class="line">    branchAll       = branchCommand.Flag(<span class="string">"all"</span>, <span class="string">"list both remote and local branches"</span>).Bool()</span><br><span class="line">    branchRemotes   = branchCommand.Flag(<span class="string">"remote"</span>, <span class="string">"list only remote branches"</span>).Bool()</span><br><span class="line">    branchOrderDate = branchCommand.Flag(<span class="string">"date-order"</span>, <span class="string">"order branches by date"</span>).Bool()</span><br><span class="line">logCommand          = pin.Command(<span class="string">"log"</span>, <span class="string">"Show commit logs."</span>)</span><br><span class="line">    logAhead        = logCommand.Flag(<span class="string">"ahead"</span>, <span class="string">"show commits that not pushed to upstream"</span>).Bool()</span><br><span class="line">    logAuthor       = logCommand.Flag(<span class="string">"author"</span>, <span class="string">"limit commits to those by given author"</span>).String()</span><br><span class="line">    logBefore       = logCommand.Flag(<span class="string">"before"</span>, <span class="string">"show commits older than given date (RFC3339)"</span>).String()</span><br><span class="line">    logBehind       = logCommand.Flag(<span class="string">"behind"</span>, <span class="string">"show commits that not merged from upstream"</span>).Bool()</span><br><span class="line">    logCommitter    = logCommand.Flag(<span class="string">"committer"</span>, <span class="string">"limit commits to those by given committer"</span>).String()</span><br><span class="line">    logMaxCount     = logCommand.Flag(<span class="string">"max-count"</span>, <span class="string">"maximum number of commits to display"</span>).Int()</span><br><span class="line">    logSince        = logCommand.Flag(<span class="string">"since"</span>, <span class="string">"show commits newer than given date (RFC3339)"</span>).String()</span><br><span class="line">status              = pin.Command(<span class="string">"status"</span>, <span class="string">"Show working-tree status. Also stage and commit changes."</span>)</span><br></pre></td></tr></table></figure>
+<p>There will be only main commands such as branch, log and status. With this, it will be much straightforward to use. It clearly reduces code complexity. Also, I tried to reduce the real estate of the screen so I removed the controls line. You will be prompted with controls when you simply type <code>?</code> character.</p>
+<p>So here is the comparison of two different versions of gitin. I used <code>gitin status</code> command for the demo. In the left you are looking to the new version, on the right there is the old one.</p>
+<p><img src="/images/gitin_compare.png" alt=""></p>
+<p>The help output will be like:</p>
+<p><img src="/images/gitin_help.png" alt=""></p>
+<p>Also I stick on fuzzy search rather than giving the user the choice of the search algorithm. I think fuzzy search does fine and covers %99 percent of use cases. I used <a href="https://github.com/sahilm/fuzzy" target="_blank" rel="noopener">fuzzy</a> instead of using my own fork. In order to give more information about the search results, I added underline to the matched characters in the string.</p>
+<p><img src="/images/gitin_search.png" alt=""></p>
+<p>And the <code>gitin branch</code> command will be look something like this:</p>
+<p><img src="/images/gitin_branch.png" alt=""></p>
+<p>I plan to release v0.2.0 in a couple weeks so stay tuned.</p>
+<p><em>I would like to hear your thoughts about this post. If you want to share with me, you can find me on <a href="https://twitter.com/isacikgoz" target="_blank" rel="noopener">Twitter</a>.</em></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">Home</a></li>
+         
+          <li><a href="/archives/">Writing</a></li>
+         
+          <li><a href="http://github.com/isacikgoz">Projects</a></li>
+         
+          <li><a href="/Search/">Search</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2019/06/12/gitin-v0-2/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://twitter.com/share?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&text=About gitin v0.2"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&is_video=false&description=About gitin v0.2"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=About gitin v0.2&body=Check out this article: http://isacikgoz.me/2019/06/12/gitin-v0-2/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="https://getpocket.com/save?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://reddit.com/submit?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://digg.com/submit?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&title=About gitin v0.2"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2019/06/12/gitin-v0-2/&name=About gitin v0.2&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2019 İbrahim Serdar Açıkgöz
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">Home</a></li>
+         
+          <li><a href="/archives/">Writing</a></li>
+         
+          <li><a href="http://github.com/isacikgoz">Projects</a></li>
+         
+          <li><a href="/Search/">Search</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+</body>
+</html>
+<!-- styles -->
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+<!-- jquery -->
+<script src="/lib/jquery/jquery.min.js"></script>
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+<script src="/js/main.js"></script>
+<!-- search -->
+
+<!-- Google Analytics -->
+
+    <script type="text/javascript">
+        (function(i,s,o,g,r,a,m) {i['GoogleAnalyticsObject']=r;i[r]=i[r]||function() {
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-97833654-1', 'auto');
+        ga('send', 'pageview');
+    </script>
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+

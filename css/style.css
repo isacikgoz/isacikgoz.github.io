@@ -1021,12 +1021,15 @@ body {
 }
 .post-list .post-item .meta {
   display: block;
-  margin-right: 16px;
   min-width: 100px;
   color: #666;
   font-size: 14px;
 }
 @media (min-width: 480px) {
+  .post-list {
+    padding: 0;
+    list-style: none;
+  }
   .post-list .post-item {
     display: flex;
     margin-bottom: 5px;
