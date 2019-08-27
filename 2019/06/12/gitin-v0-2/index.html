@@ -13,15 +13,16 @@
 <meta property="og:site_name" content="İbrahim Serdar&#39;s Blog">
 <meta property="og:description" content="As I mentioned in my previous blog post, I was not so happy with gitin’s state. First of all, from a maintenance point of view, it was a dependency hell. Also, it had a really complex code that tries">
 <meta property="og:locale" content="en">
+<meta property="og:image" content="https://gh-card.dev/repos/isacikgoz/gitin.svg">
 <meta property="og:image" content="http://isacikgoz.me/images/gitin_compare.png">
 <meta property="og:image" content="http://isacikgoz.me/images/gitin_help.png">
 <meta property="og:image" content="http://isacikgoz.me/images/gitin_search.png">
 <meta property="og:image" content="http://isacikgoz.me/images/gitin_branch.png">
-<meta property="og:updated_time" content="2019-06-12T19:32:41.236Z">
+<meta property="og:updated_time" content="2019-06-16T21:16:54.258Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="About gitin v0.2">
 <meta name="twitter:description" content="As I mentioned in my previous blog post, I was not so happy with gitin’s state. First of all, from a maintenance point of view, it was a dependency hell. Also, it had a really complex code that tries">
-<meta name="twitter:image" content="http://isacikgoz.me/images/gitin_compare.png">
+<meta name="twitter:image" content="https://gh-card.dev/repos/isacikgoz/gitin.svg">
     
     
         
@@ -142,6 +143,7 @@
 
   <div class="content" itemprop="articleBody">
     <p>As I mentioned in my previous blog post, I was not so happy with gitin’s state. First of all, from a maintenance point of view, it was a dependency hell. Also, it had a really complex code that tries to do some library to behave that is not meant to. For instance, the <a href="https://github.com/manifoldco/promptui" target="_blank" rel="noopener">promptui</a> library which is developed by <a href="https://github.com/manifoldco" target="_blank" rel="noopener">manifoldco</a> was not intended to have a use case like this. So I had to fork it and make patches to it. Even if I do that, I still had issues that I need to deal with. So it was really frustrating to get basic functionality. By the way, the library is really nice, I used several functions from it but it didn’t fit into my problem. And it is also worth to mention that documentation of that project is awesome.</p>
+<p><a href="https://github.com/isacikgoz/gitin" target="_blank" rel="noopener"><img src="https://gh-card.dev/repos/isacikgoz/gitin.svg" alt="isacikgoz/gitin - GitHub"></a></p>
 <p>Also, the git package in gitin was not making me happy too. Because it was not following the separation of concerns discipline so it was messy. I really liked to use src-d/go-git while I was developing <a href="https://github.com/isacikgoz/gitbatch" target="_blank" rel="noopener">gitbatch</a> but it had some performance issues on my use cases so I couldn’t use it. Instead, I stick on libgit2/git2go to deal with a repository. The performance of <a href="https://github.com/libgit2/libgit2" target="_blank" rel="noopener">libgit2</a> is outstanding so I made the decision. But it was a little bit complicated at the beginning since the very nature of being a rookie on handling git repositories.</p>
 <p>So I started to develop the clone of gitin from scratch. I named it sig, to be shorter. Honestly, I prefer to use it as sig but that’s not a big deal. I started with some experiments to replace promptui for rendering. I managed to do so, it was really a nice thing that I got rid of my most complex dependency. After that, I started to re-write the git package as a separate project to use it in gitbatch also. Since I like the interface of go-git project, I created my own API to libgit2 with go-git’s approach. Which is hosted <a href="https://github.com/isacikgoz/libgit2-api" target="_blank" rel="noopener">here</a>. With these two improvements now I have much more control on software’s behavior and also it is much faster since I removed a lot of overhead. Also, I decided to use git with two different approaches; If I am going to read something from the repository I use libgit2 on the other hand if the user going to create an action such as doing a commit or request to read diff of a file I use git itself. This approach is much better than the previous one since it really reduced the complexity and also improved usability.</p>
 <p>Now the <a href="https://github.com/isacikgoz/gitin/tree/development" target="_blank" rel="noopener">development</a> branch of gitin is merged with the clone and it is ready for testing. It is not finished yet though. I want to improve the terminal interface and I still couldn’t find the best solution for printing the output to the terminal. The current code has some code duplications that needs to be reviewed and I want to support both colour output along with black and white output. This kind of changes won’t affect the behavior so not so important from a users point of view.</p>
