@@ -5,82 +5,82 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="HandheldFriendly" content="True">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <meta name="description" content="Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community">
 <meta property="og:type" content="article">
 <meta property="og:title" content="The Go effect after 7 years with Java">
 <meta property="og:url" content="http://isacikgoz.me/2018/12/30/golang/index.html">
 <meta property="og:site_name" content="İbrahim Serdar&#39;s Blog">
 <meta property="og:description" content="Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community">
-<meta property="og:locale" content="en">
+<meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://starcharts.herokuapp.com/isacikgoz/tldr.svg">
-<meta property="og:updated_time" content="2019-01-21T11:18:44.000Z">
+<meta property="article:published_time" content="2018-12-30T19:53:56.000Z">
+<meta property="article:modified_time" content="2023-02-21T12:43:06.088Z">
+<meta property="article:author" content="İbrahim Serdar Açıkgöz">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="The Go effect after 7 years with Java">
-<meta name="twitter:description" content="Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community">
 <meta name="twitter:image" content="https://starcharts.herokuapp.com/isacikgoz/tldr.svg">
     
     
+      
         
-          
-              <link rel="shortcut icon" href="/images/favicon.ico">
-          
+          <link rel="shortcut icon" href="/images/favicon.ico">
         
+      
+      
         
-          
-            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
-          
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
         
+      
+      
         
-          
-            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
-          
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
         
+      
     
     <!-- title -->
     <title>The Go effect after 7 years with Java</title>
     <!-- styles -->
-    <link rel="stylesheet" href="/css/style.css">
-    <!-- persian styles -->
     
-      <link rel="stylesheet" href="/css/rtl.css">
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
     
     <!-- rss -->
     
     
-<link rel="alternate" href="/atom.xml" title="İbrahim Serdar's Blog" type="application/atom+xml">
-<link rel="alternate" href="/rss2.xml" title="İbrahim Serdar's Blog" type="application/rss+xml">
-</head>
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
 
 <body class="max-width mx-auto px3 ltr">
     
       <div id="header-post">
-  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
-  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
-  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
   <span id="menu">
     <span id="nav">
       <ul>
-         
-          <li><a href="/">Home</a></li>
-         
-          <li><a href="/archives/">Writing</a></li>
-         
-          <li><a href="http://github.com/isacikgoz">Projects</a></li>
-         
-          <li><a href="/Search/">Search</a></li>
-        
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/isacikgoz">Projects</a></li><!--
+     --><!--
+       --><li><a href="/Search/">Search</a></li><!--
+     -->
       </ul>
     </span>
     <br/>
     <span id="actions">
       <ul>
         
-        <li><a class="icon" href="/2019/01/01/farewell-2018/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Previous post" href="/2019/01/01/farewell-2018/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
         
         
-        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
-        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
       </ul>
       <span id="i-prev" class="info" style="display:none;">Previous post</span>
       <span id="i-next" class="info" style="display:none;">Next post</span>
@@ -90,16 +90,17 @@
     <br/>
     <div id="share" style="display: none">
       <ul>
-  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2018/12/30/golang/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="https://twitter.com/share?url=http://isacikgoz.me/2018/12/30/golang/&text=The Go effect after 7 years with Java"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2018/12/30/golang/&is_video=false&description=The Go effect after 7 years with Java"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2018/12/30/golang/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://isacikgoz.me/2018/12/30/golang/&text=The Go effect after 7 years with Java"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2018/12/30/golang/&is_video=false&description=The Go effect after 7 years with Java"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
   <li><a class="icon" href="mailto:?subject=The Go effect after 7 years with Java&body=Check out this article: http://isacikgoz.me/2018/12/30/golang/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="https://getpocket.com/save?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://reddit.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://digg.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2018/12/30/golang/&name=The Go effect after 7 years with Java&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2018/12/30/golang/&name=The Go effect after 7 years with Java&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://isacikgoz.me/2018/12/30/golang/&t=The Go effect after 7 years with Java"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -123,11 +124,14 @@
 
     <div class="meta">
       <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
-        <span itemprop="name">İbrahim Serdar's Blog</span>
+        <span itemprop="name">İbrahim Serdar Açıkgöz</span>
       </span>
       
     <div class="postdate">
-        <time datetime="2018-12-30T22:53:56.000Z" itemprop="datePublished">2018-12-30</time>
+      
+        <time datetime="2018-12-30T19:53:56.000Z" itemprop="datePublished">2018-12-30</time>
+        
+      
     </div>
 
 
@@ -141,11 +145,13 @@
 
   <div class="content" itemprop="articleBody">
     <p>Recently, I’ve been working on some side projects to improve my Go skills. Since I have some close friends who are very active with Go, I was stoically observing their work along with the Go community. Hence, it was always an interesting topic for me. I don’t know when the exact time the spark is flamed but I found myself working on these side project after I came home from work till midnight. For a quick info, I’ve been working as a software engineer on a satellite ground station project. And I don’t have a single bit related to Go in my professional career. We use java, c++ and occasionally python.</p>
-<p>So let’s return to the topic; the effect beneath Go. As far as I can see, Go is complicated at the begining if you have a solid java-style background. The language itself has a little awkward syntax. But in time, eventually, you are getting used to it. If I supposed to compare it with java, for a public function(method) you write;<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> string <span class="title">getName</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">this</span>.name;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>Go on the other hand;<br><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(m *MyStruct)</span> <span class="title">GetName</span><span class="params">()</span> <span class="title">string</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> m.name</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>So let’s return to the topic; the effect beneath Go. As far as I can see, Go is complicated at the begining if you have a solid java-style background. The language itself has a little awkward syntax. But in time, eventually, you are getting used to it. If I supposed to compare it with java, for a public function(method) you write;</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> string <span class="title function_">getName</span><span class="params">()</span> &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="built_in">this</span>.name;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Go on the other hand;</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(m *MyStruct)</span></span> GetName() <span class="type">string</span> &#123;</span><br><span class="line">	<span class="keyword">return</span> m.name</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>As you can see, even with the simplest code snippets, with a java point of view, it is not so easy to get used to this syntax. But this is the initial feeling though. Also, lack of object-oriented paradigms such as inheritance etc. makes you look at the computer screen meaningless. So I thought that it would be a better practice to see other peoples work and try to understand how they use the the language in real life problems. I visited many open source Go projects and noticed that Go developers write code with the shortest possible variable names, shortest possible function names. Java devs on the other hand, tend to be more verbose. Java-like coding is like writing a literature book. Reading java code requires less learning curve. Go; hard to start easy to sustain. At the begining I was struggling to understand the code snippets but now I’m getting used to it. I’m sure that there are many writings about how Go has different syntax than X language or differences between functional programming and object-orinted programming. This comparison is a little out of my topic but still worth to mention a little.</p>
-<p>My verdict on Go is that it is far more practical when it comes to create “something”. I mean, you have an idea, you want to see quick results without concerning code-style or any architectural things, Go gives you the oppurtinty to do your job swiftly. Not much boilerplates. Once you create the “thing”, you see that the program is actually fast, reliable and easy to distribute. You don’t need much effort to turn it into an actual product. I had an idea of making a Go client of <a href="https://github.com/tldr-pages/tldr" target="_blank" rel="noopener">tldr-pages</a>. Altough there are plenty of same clients, I had a different idea to make it more and more user-friendly. It didn’t take more than 3 nights to create minimum viable product. When I published the pre-release version at third night, the repository had 9 commits and roughly 700 lines of code. It was nearly a ready product and when I showcased in some subreddits such as r/linux or r/golang it quickly took attention. It was very easy to create executable binaries via go build, so I wrote a bash script to create binaries for every mainstream platform and architecture. The script also compresses the files, runs a sha256 checksum and writes to a file. The <a href="https://gist.github.com/isacikgoz/72bf1c48728cded3230023d20ebd7069" target="_blank" rel="noopener">script</a> is also 40 lines of code. The project development was blazing fast, I had an idea and created a tool that is actually distributable and had positive feedback from the community. And I was not the pioneer of the idea of tldr-pages. Maybe the 50. client.</p>
-<p>So what about the actual product? (<a href="https://github.com/isacikgoz/tldr" target="_blank" rel="noopener">tldr++</a>) It is easily integrated to CI process, adopted from community and become a very user-friendly client. Also, performance-wise it is the fastest client. And offers much more functionality than others. The actual performance results are shown in the table below:</p>
+<p>My verdict on Go is that it is far more practical when it comes to create “something”. I mean, you have an idea, you want to see quick results without concerning code-style or any architectural things, Go gives you the oppurtinty to do your job swiftly. Not much boilerplates. Once you create the “thing”, you see that the program is actually fast, reliable and easy to distribute. You don’t need much effort to turn it into an actual product. I had an idea of making a Go client of <a target="_blank" rel="noopener" href="https://github.com/tldr-pages/tldr">tldr-pages</a>. Altough there are plenty of same clients, I had a different idea to make it more and more user-friendly. It didn’t take more than 3 nights to create minimum viable product. When I published the pre-release version at third night, the repository had 9 commits and roughly 700 lines of code. It was nearly a ready product and when I showcased in some subreddits such as r&#x2F;linux or r&#x2F;golang it quickly took attention. It was very easy to create executable binaries via go build, so I wrote a bash script to create binaries for every mainstream platform and architecture. The script also compresses the files, runs a sha256 checksum and writes to a file. The <a target="_blank" rel="noopener" href="https://gist.github.com/isacikgoz/72bf1c48728cded3230023d20ebd7069">script</a> is also 40 lines of code. The project development was blazing fast, I had an idea and created a tool that is actually distributable and had positive feedback from the community. And I was not the pioneer of the idea of tldr-pages. Maybe the 50. client.</p>
+<p>So what about the actual product? (<a target="_blank" rel="noopener" href="https://github.com/isacikgoz/tldr">tldr++</a>) It is easily integrated to CI process, adopted from community and become a very user-friendly client. Also, performance-wise it is the fastest client. And offers much more functionality than others. The actual performance results are shown in the table below:</p>
 <table>
 <thead>
 <tr>
@@ -157,14 +163,13 @@
 <th>node</th>
 </tr>
 </thead>
-<tbody>
-<tr>
+<tbody><tr>
 <td></td>
-<td><a href="https://github.com/isacikgoz/tldr" target="_blank" rel="noopener">tldr++</a></td>
-<td><a href="https://github.com/tldr-pages/tldr-cpp-client" target="_blank" rel="noopener">cpp-client</a></td>
-<td><a href="https://github.com/dbrgn/tealdeer" target="_blank" rel="noopener">tealdeer</a></td>
-<td><a href="https://github.com/raylee/tldr" target="_blank" rel="noopener">tldr</a></td>
-<td><a href="https://github.com/tldr-pages/tldr-node-client" target="_blank" rel="noopener">node-client</a></td>
+<td><a target="_blank" rel="noopener" href="https://github.com/isacikgoz/tldr">tldr++</a></td>
+<td><a target="_blank" rel="noopener" href="https://github.com/tldr-pages/tldr-cpp-client">cpp-client</a></td>
+<td><a target="_blank" rel="noopener" href="https://github.com/dbrgn/tealdeer">tealdeer</a></td>
+<td><a target="_blank" rel="noopener" href="https://github.com/raylee/tldr">tldr</a></td>
+<td><a target="_blank" rel="noopener" href="https://github.com/tldr-pages/tldr-node-client">node-client</a></td>
 </tr>
 <tr>
 <td>time</td>
@@ -222,18 +227,17 @@
 <td>~300</td>
 <td>~4.5K</td>
 </tr>
-</tbody>
-</table>
-<p><br><br>bench v 1.0.12 is used for benchmarking and hardware details are: </p>
-<ul>
-<li>cpu: Intel(R) Xeon(R) CPU E5-2637 v2 @ 3.50GHz,</li>
-<li>ram: 128GB DDR3 RAM,</li>
-<li>disk: SSD, 550/500(r/w)</li>
-</ul>
-<p>As a matter of fact, tldr++ is being the one of the most popular client right now. For this amount of time its success means a lot to me. You can see its growth of popularity in time below.<br><a href="https://starcharts.herokuapp.com/isacikgoz/tldr" target="_blank" rel="noopener"><img src="https://starcharts.herokuapp.com/isacikgoz/tldr.svg" alt="Stargazers over time"></a></p>
+</tbody></table>
+<br>
+bench v 1.0.12 is used for benchmarking and hardware details are: 
+- cpu: Intel(R) Xeon(R) CPU E5-2637 v2 @ 3.50GHz,
+- ram: 128GB DDR3 RAM,
+- disk: SSD, 550/500(r/w)
+
+<p>As a matter of fact, tldr++ is being the one of the most popular client right now. For this amount of time its success means a lot to me. You can see its growth of popularity in time below.<br><a target="_blank" rel="noopener" href="https://starcharts.herokuapp.com/isacikgoz/tldr"><img src="https://starcharts.herokuapp.com/isacikgoz/tldr.svg" alt="Stargazers over time"></a></p>
 <p>I really enjoyed working with Go and had pure satisfaction of creating something at this speed. Now, I have two side-projects with Go and I’m counting time to get home and work on them. I would like to thank to Go communtiy to make this happen.</p>
 <p>tldr; if you have an idea, with the momentum of its community Go is a great tool to make it happen swiftly!</p>
-<p><em>I would like to hear your thoughts about this post. If you want to share with me, you can find me on <a href="https://twitter.com/isacikgoz" target="_blank" rel="noopener">twitter</a>.</em></p>
+<p><em>I would like to hear your thoughts about this post. If you want to share with me, you can find me on <a target="_blank" rel="noopener" href="https://twitter.com/isacikgoz">twitter</a>.</em></p>
 
   </div>
 </article>
@@ -251,7 +255,7 @@
          
           <li><a href="/archives/">Writing</a></li>
          
-          <li><a href="http://github.com/isacikgoz">Projects</a></li>
+          <li><a target="_blank" rel="noopener" href="http://github.com/isacikgoz">Projects</a></li>
          
           <li><a href="/Search/">Search</a></li>
         
@@ -264,16 +268,17 @@
 
     <div id="share-footer" style="display: none">
       <ul>
-  <li><a class="icon" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2018/12/30/golang/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="https://twitter.com/share?url=http://isacikgoz.me/2018/12/30/golang/&text=The Go effect after 7 years with Java"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2018/12/30/golang/&is_video=false&description=The Go effect after 7 years with Java"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://isacikgoz.me/2018/12/30/golang/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://isacikgoz.me/2018/12/30/golang/&text=The Go effect after 7 years with Java"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://isacikgoz.me/2018/12/30/golang/&is_video=false&description=The Go effect after 7 years with Java"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
   <li><a class="icon" href="mailto:?subject=The Go effect after 7 years with Java&body=Check out this article: http://isacikgoz.me/2018/12/30/golang/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="https://getpocket.com/save?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://reddit.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://digg.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2018/12/30/golang/&name=The Go effect after 7 years with Java&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://isacikgoz.me/2018/12/30/golang/&title=The Go effect after 7 years with Java"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://isacikgoz.me/2018/12/30/golang/&name=The Go effect after 7 years with Java&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://isacikgoz.me/2018/12/30/golang/&t=The Go effect after 7 years with Java"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -291,51 +296,93 @@
         
         <footer id="footer">
   <div class="footer-left">
-    Copyright &copy; 2020 İbrahim Serdar Açıkgöz
+    Copyright &copy;
+    
+    
+    2016-2023
+    İbrahim Serdar Açıkgöz
   </div>
   <div class="footer-right">
     <nav>
       <ul>
-         
-          <li><a href="/">Home</a></li>
-         
-          <li><a href="/archives/">Writing</a></li>
-         
-          <li><a href="http://github.com/isacikgoz">Projects</a></li>
-         
-          <li><a href="/Search/">Search</a></li>
-        
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/isacikgoz">Projects</a></li><!--
+     --><!--
+       --><li><a href="/Search/">Search</a></li><!--
+     -->
       </ul>
     </nav>
   </div>
 </footer>
 
     </div>
-</body>
-</html>
-<!-- styles -->
-<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
-<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+    <!-- styles -->
 
-<!-- jquery -->
-<script src="/lib/jquery/jquery.min.js"></script>
-<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+ 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script> 
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script> 
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
 <script src="/js/main.js"></script>
+
 <!-- search -->
 
 <!-- Google Analytics -->
 
-    <script type="text/javascript">
-        (function(i,s,o,g,r,a,m) {i['GoogleAnalyticsObject']=r;i[r]=i[r]||function() {
-        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-        ga('create', 'UA-97833654-1', 'auto');
-        ga('send', 'pageview');
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-97833654-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-97833654-1');
     </script>
 
 <!-- Baidu Analytics -->
 
+<!-- Cloudflare Analytics -->
+
+<!-- Umami Analytics -->
+
 <!-- Disqus Comments -->
 
+<!-- utterances Comments -->
 
+</body>
+</html>
