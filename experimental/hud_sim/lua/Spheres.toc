@@ -1,0 +1,23 @@
+## Interface: 16001, 120105
+## Title: Spheres
+## Notes: Diablo's two spheres beside a charcoal or Modern silver frame, with matching statues: health and mana side by side, or full health with non-mana power in an embedded sphere; the minimap on the right, two action rows with Bag and experience in the frame, and other bars, the game menu and class spell fans as rings. Works in combat.
+## Author: Ibrahim
+## Version: 0.5.611
+## SavedVariablesPerCharacter: SpheresDB
+## IconTexture: Interface\Icons\INV_Misc_Orb_01
+## AddonCompartmentFunc: Spheres_OnAddonCompartmentClick
+
+Art.lua
+Retail.lua
+Spells.lua
+Sphere.lua
+Auras.lua
+Track.lua
+Bars.lua
+Ring.lua
+Target.lua
+Chat.lua
+Tracker.lua
+Motion.lua
+Core.lua
+Settings.lua

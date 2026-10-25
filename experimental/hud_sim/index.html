@@ -1,0 +1,2581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WoW HUD Sim</title>
+<!--
+  Spheres' two orbs run by the add-on's own Lua, in this page: Lua 5.1 compiled to WebAssembly
+  (vendor/lua51.wasm, through sim_lua.js) runs tools/sim_bridge.lua (Art.lua, Sphere.lua and Motion.lua
+  as the game loads them: the left orb's buildLeft, laid out by S.UpdateLeft and S.UpdatePet, the map
+  sphere's layers, their OnUpdate scripts). Each frame this page asks it with what the character does
+  and the unit data picked here, and draws the textures the Lua laid out, from ../Media/*.tga. Its own
+  drawing: the world behind (sim_world.js's 3D world, in a canvas under this page's) and a stand-in for
+  the minimap's terrain (the game draws that). `make sim` from the repo root
+  serves it (tools/sim_server.py: the files, the media's previews, the glows and shadows' renders).
+  Repo-only (tools/ never ships).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* One screen: the game view fills the left, a brass-trimmed control rail on the right scrolls on its own. One dark world, like the HUD it shows. */
+:root {
+  --bg: #0f1216;
+  --panel: #161a20;
+  --line: #29303a;
+  --fg: #e7e2d7;
+  --muted: #98a1ab;
+  --brass: #c9a565;
+  --brass-dim: #7d6740;
+  --hot: #e2683f;
+  --calm: #6da98c;
+  --font-display: "Marcellus", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; overflow: hidden; }
+.wrap { box-sizing: border-box; height: 100%; max-width: 1600px; margin: 0 auto; padding-inline: 20px; padding-block: 10px 16px;
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
+/* one slim line: the name, what it's for (the scene's hint lists the controls) */
+header { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+h1 { flex: none; font-family: var(--font-display); font-weight: 400; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase;
+  margin: 0; color: var(--brass); }
+header p { margin: 0; min-width: 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage { position: relative; min-height: 0; }
+.view { position: absolute; inset: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #0a0c0f; min-height: 0;
+  touch-action: none; cursor: grab; outline: none; }
+.view.looking { cursor: none; } /* the game hides the cursor while the mouse turns the camera or you */
+.view:focus-visible { box-shadow: 0 0 0 2px var(--brass); }
+.view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.view .corner { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
+.view .hint { max-width: min(560px, 55%); box-sizing: border-box; text-align: left; font-size: 12px; line-height: 1.45;
+  color: rgba(231, 226, 215, 0.8); background: rgba(10, 12, 15, 0.6); padding: 3px 8px; border-radius: 4px; }
+.view .hint span { white-space: nowrap; } /* lines break between controls, never inside one */
+.view .busy { display: flex; align-items: center; gap: 10px; padding: 8px 14px;
+  border: 1px solid var(--brass-dim); border-radius: 6px; background: rgba(15, 18, 22, 0.9); color: var(--fg); font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45); pointer-events: none; }
+.view .busy b { font-family: var(--font-mono); font-weight: 500; color: var(--brass); font-variant-numeric: tabular-nums; }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--brass-dim); border-top-color: var(--brass);
+  animation: spin 0.8s linear infinite; flex: none; }
+.view .busy[hidden] { display: none; }
+/* until the first whole picture (Lua, the world, the bar, the textures it asked for): nothing half drawn */
+.loading { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--bg); border-radius: 6px;
+  transition: opacity 0.4s ease; }
+.loading.gone { opacity: 0; pointer-events: none; }
+.loading[hidden] { display: none; }
+.loading .card { display: grid; justify-items: center; gap: 12px; width: min(320px, calc(100% - 32px)); text-align: center; }
+.loading b { font-family: var(--font-display); font-weight: 400; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brass); }
+.loading .track { width: 100%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.loading .track i { display: block; width: 0; height: 100%; background: var(--brass); transition: width 0.2s ease; }
+.loading span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.loading.failed span { color: var(--hot); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-color: var(--brass); } }
+.view .error { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: rgba(10, 12, 15, 0.9); }
+/* The controls: a window floating over the scene, as the game's (drag its title bar; it minimizes to it, O too),
+   four tabs of groups; it stops above the HUD (menu placement in the script) */
+.menu { position: absolute; top: 12px; right: 12px; z-index: 5; width: 340px; max-height: calc(100% - 24px); display: flex; flex-direction: column;
+  box-sizing: border-box; overflow: hidden; background: rgba(16, 19, 24, 0.9); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  border: 1px solid var(--brass-dim); border-radius: 6px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.menu .titlebar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; cursor: grab; user-select: none;
+  touch-action: none; background: linear-gradient(#2a2418, #19150e); border-bottom: 1px solid var(--brass-dim); }
+.menu.dragging .titlebar { cursor: grabbing; }
+.menu .title { flex: 1; font-family: var(--font-display); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brass); }
+.menu .wbtn { width: 26px; height: 24px; padding: 0; font-size: 16px; line-height: 1; color: var(--brass); background: rgba(10, 12, 15, 0.6); }
+.menu .menubody { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 14px 12px; }
+.menu.folded .menubody { display: none; }
+.menu.more .menubody { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
+.menu .tabs { display: flex; gap: 4px; padding-top: 10px; }
+.menu .tabs [role="tab"] { flex: 1; padding: 6px 4px; font-size: 13px; color: var(--muted); background: #161a20; border-radius: 5px; }
+.menu .tabs [role="tab"][aria-selected="true"] { color: var(--brass); background: #2a2418; border-color: var(--brass-dim); }
+.pane[hidden] { display: none; }
+
+.group { display: grid; gap: 10px; }
+/* The groups fold under their headings (an accordion; several may stay open); a group whose knobs left
+   their starting values shows its Reset, folded or not. */
+.tools { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; margin: 0 -14px;
+  padding: 10px 14px; background: rgb(16, 19, 24); border-bottom: 1px solid var(--line); }
+.tools .spacer { flex: 1; }
+.tools button { font-size: 13px; padding: 4px 10px; }
+.group { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.group:last-child { border-bottom: 0; }
+.group .head { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; font-size: 13px; }
+.group .fold { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 2px 0; border: 0; background: none;
+  text-align: left; font-family: var(--font-display); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--brass); cursor: pointer; }
+.group .fold::before { content: ""; flex: none; width: 6px; height: 6px; margin-left: 2px; border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 0.15s ease; }
+.group .fold[aria-expanded="true"]::before { transform: rotate(45deg); }
+.group .fold:hover { color: #e0bf80; }
+.group .fold .sub { font-family: var(--font-body); font-size: 12px; letter-spacing: normal; text-transform: none; color: var(--muted); }
+.group .fold .title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-width: 0; }
+.group .reset { flex: none; font-size: 12px; line-height: 1.3; padding: 3px 9px; color: var(--brass); background: #2a2418;
+  border-color: var(--brass-dim); letter-spacing: normal; text-transform: none; font-family: var(--font-body); }
+.group .reset[hidden] { display: none; }
+.fold-body { display: grid; gap: 10px; padding-top: 12px; }
+.fold-body[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .group .fold::before { transition: none; } }
+.meter { display: grid; gap: 6px; }
+.meter .track { position: relative; height: 10px; border-radius: 5px; background: #0c0f13; border: 1px solid var(--line); overflow: hidden; }
+.meter .fill { position: absolute; inset: 0; transform-origin: left center; transform: scaleX(0); background: var(--calm); }
+.meter .fill.hot { background: var(--hot); }
+.meter .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--brass); }
+.read { display: flex; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.read b { color: var(--fg); font-weight: 500; }
+.buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+button, .file { font: inherit; font-size: 14px; color: var(--fg); background: #1e242c; border: 1px solid var(--line); border-radius: 5px; padding: 7px 10px; cursor: pointer; text-align: center; position: relative; }
+button:hover, .file:hover { border-color: var(--brass-dim); }
+button:focus-visible, .file:focus-within { outline: 2px solid var(--brass); outline-offset: 1px; }
+button.primary { background: #2a2418; border-color: var(--brass-dim); color: var(--brass); }
+.file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.row label { font-size: 14px; }
+.row output { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.row output.changed { color: var(--brass); }
+.row input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--brass); margin: 0; }
+.row small, .group > small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.35; }
+.choice { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.choice .name { flex-basis: 100%; color: var(--muted); font-size: 12px; }
+.choice label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.choice input { accent-color: var(--brass); margin: 0; }
+.note { font-size: 12px; color: var(--calm); }
+.note:empty { display: none; }
+.group h3 { font-family: var(--font-body); font-weight: 600; font-size: 13px; color: var(--fg); margin: 6px 0 0; }
+/* the light's dial: the sun dragged round a ball, its highlight drawn where the glass will show it */
+.lightdial { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+#lightDial { width: 120px; height: 120px; border-radius: 50%; cursor: grab; touch-action: none; outline: none; }
+#lightDial.dragging { cursor: grabbing; }
+#lightDial:focus-visible { box-shadow: 0 0 0 2px var(--brass); }
+.lightread { display: grid; gap: 4px; }
+.lightread output { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.lightread output.changed { color: var(--brass); }
+code { font-family: var(--font-mono); font-size: 0.92em; color: var(--fg); }
+#status { color: var(--hot); padding-top: 10px; }
+/* The action bar over the HUD (sim_bar.js): buttons where Bars.lua stands them, the brass bevel over a drawn icon */
+.hudbar { position: absolute; inset: 0; pointer-events: none; }
+.hudbar .slot { position: absolute; padding: 0; border: 0; border-radius: 0; background: #0c0f13; pointer-events: auto; cursor: pointer; }
+.hudbar .slot[hidden] { display: none; }
+.hudbar .slot .icon { position: absolute; left: 7%; top: 7%; width: 86%; height: 86%; }
+.hudbar .slot .edge { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hudbar.modern .slot:not(.round) .edge { inset: -3.333333%; width: 106.666667%; height: 106.666667%; }
+.hudbar.modern .slot { background: transparent; }
+.hudbar.modern .slot:not(.round) .icon { left: 0; top: 0; width: 100%; height: 100%;
+  clip-path: polygon(7.78% 0, 92.22% 0, 100% 7.78%, 100% 92.22%, 92.22% 100%, 7.78% 100%, 0 92.22%, 0 7.78%); }
+.hudbar .slot .cd { position: absolute; left: 7%; top: 7%; width: 86%; height: 86%; display: grid; place-items: center;
+  background: conic-gradient(rgba(0, 0, 0, 0.62) var(--p, 0%), transparent 0); color: #fff; font-weight: 600; text-shadow: 0 1px 2px #000; }
+.hudbar .slot .key { position: absolute; top: 6%; right: 11%; line-height: 1; color: #f2f2f2; font-weight: 600; text-shadow: 0 0 2px #000, 0 1px 2px #000; }
+.hudbar .slot .key.far { color: #ff3b30; } /* the game's: out of range, or not facing */
+.hudbar.tiny .slot .key { display: none; }
+.hudbar .slot.nopower .icon { filter: brightness(0.6) sepia(1) hue-rotate(185deg) saturate(2.4); } /* the game's blue: not enough power */
+.hudbar .slot.unusable .icon { filter: grayscale(1) brightness(0.5); }
+/* the game's checked light: inside the bevel, over the icon's edge, sized with the button */
+.hudbar .slot.active::after, .hudbar .slot.checked::after { content: ""; position: absolute; inset: 7%; pointer-events: none;
+  box-shadow: inset 0 0 0 max(1px, calc(var(--u, 1px) * 1.5)) var(--lit), inset 0 0 calc(var(--u, 1px) * 6) var(--glow); }
+.hudbar .slot.active { --lit: #ffd36b; --glow: rgba(255, 211, 107, 0.8); }
+.hudbar .slot.checked { --lit: #f2e2a0; --glow: rgba(242, 226, 160, 0.7); }
+.hudbar .slot .key { z-index: 1; }
+.hudbar .slot:hover .edge { filter: brightness(1.4); }
+.hudbar .slot:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+.hudbar .castbar { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 6px; overflow: hidden; background: rgba(8, 10, 12, 0.85); border: 1px solid var(--brass-dim); border-radius: 3px; color: #fff; }
+.hudbar .castbar[hidden] { display: none; }
+.hudbar .castbar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(#f6c45a, #c4861c); }
+.hudbar .castbar span { position: relative; text-shadow: 0 1px 2px #000; }
+.hudbar .errors { position: absolute; left: 0; right: 0; top: 24%; text-align: center; font-family: var(--font-display); font-size: 17px;
+  color: #ff2a1f; text-shadow: 0 0 3px #000, 0 1px 2px #000; }
+.hudbar .errors.fade { animation: errfade 2.4s forwards; }
+@keyframes errfade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+.hudbar .combo { position: absolute; display: flex; gap: 4px; }
+.hudbar .combo[hidden] { display: none; }
+.hudbar .combo i { width: 9px; height: 9px; border-radius: 50%; background: #2a1a1a; border: 1px solid var(--brass-dim); }
+.hudbar .combo i.on { background: radial-gradient(#ffd36b, #e04a2a); box-shadow: 0 0 6px #ff7a3a; }
+.hudbar .tip { position: absolute; max-width: 260px; padding: 8px 10px; background: rgba(6, 8, 22, 0.94); border: 1px solid #5d6a8a;
+  border-radius: 4px; font-size: 13px; line-height: 1.35; color: #fff; pointer-events: none; }
+.hudbar .tip[hidden] { display: none; }
+.hudbar .tip b { display: block; font-size: 14px; }
+.hudbar .tip .row { display: flex; justify-content: space-between; gap: 12px; }
+.hudbar .tip p { margin: 4px 0 0; color: #ffd100; }
+/* The rings (sim_rings.js): the menu's round hub in the right well, the Bags hub on the row, their fans round the map
+   sphere; the game's windows (Character, Spellbook, the bags) */
+.hudbar .hub.round, .hudbar .fan.round { border-radius: 50%; background: radial-gradient(#1a1a1e 60%, transparent 62%); }
+.hudbar .hub.round .icon, .hudbar .fan.round .icon { left: 22%; top: 22%; width: 56%; height: 56%; border-radius: 50%; }
+.hudbar .hub.open { box-shadow: 0 0 0 2px #f2e2a0, 0 0 10px rgba(242, 226, 160, 0.7); }
+.hudbar .hub.round.open { border-radius: 50%; }
+.hudbar .fan { animation: fanout 0.14s ease-out; }
+.hudbar .fan.micro .icon { left: 12%; top: 14%; width: 76%; height: 72%; }
+@keyframes fanout { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .hudbar .fan { animation: none; } }
+.hudbar .note-line { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-family: var(--font-display); font-size: 16px;
+  color: #ffd100; text-shadow: 0 0 3px #000, 0 1px 2px #000; pointer-events: none; }
+.hudbar .note-line.fade { animation: errfade 3s forwards; }
+.hudbar .fan, .hudbar .tip, .hudbar .note-line { z-index: 6; } /* over the controls window while open */
+.gamewin { position: absolute; top: 16px; z-index: 6; pointer-events: auto; min-width: 220px; background: rgba(12, 14, 20, 0.94);
+  border: 1px solid var(--brass-dim); border-radius: 6px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); color: var(--fg); }
+.gamewin[hidden] { display: none; }
+/* the game's dialogs for death: a box at the top of the screen, its buttons the game's red */
+.popup { position: absolute; top: 13%; left: 50%; transform: translateX(-50%); z-index: 7; box-sizing: border-box; width: max-content;
+  max-width: calc(100% - 32px); min-width: min(300px, calc(100% - 32px)); padding: 14px 20px 12px; text-align: center;
+  background: rgba(8, 9, 13, 0.92); border: 2px solid #8d7442; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  color: #fff; font-size: 15px; pointer-events: auto; }
+.popup[hidden] { display: none; }
+.popup p { margin: 0 0 12px; max-width: 420px; }
+.popup .pbuttons { display: flex; gap: 10px; justify-content: center; }
+.popup button, .gossip .option { font-family: var(--font-display); font-size: 14px; }
+.popup button { min-width: 116px; padding: 5px 16px; color: #ffd100; background: linear-gradient(#a0261c, #5e110b);
+  border: 1px solid #d3ad5a; border-radius: 4px; text-shadow: 0 1px 1px #000; }
+.popup button:hover { background: linear-gradient(#bf3024, #741610); }
+.gossip { left: 16px; top: 22%; width: min(330px, calc(100% - 32px)); } /* where the game's sits, clear of the hint */
+.gossip .greet { margin: 0 0 12px; font-family: var(--font-display); font-size: 14px; line-height: 1.45; color: #f1e6c8; }
+.gossip .option { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 2px; text-align: left; color: #ffd100;
+  background: none; border: 0; cursor: pointer; }
+.gossip .option:hover { color: #fff; }
+.gossip .option i { width: 14px; height: 14px; flex: none; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff6c8, #d9a52a 60%, #6b4a10); }
+.view .talkhint { position: absolute; left: 0; right: 0; top: 58%; z-index: 4; text-align: center; font-family: var(--font-display);
+  font-size: 15px; color: #ffd100; text-shadow: 0 0 3px #000, 0 1px 2px #000; pointer-events: none; }
+.view .talkhint[hidden] { display: none; }
+/* coming back to life: a moment of light over the scene */
+/* Target Style "Nameplate": the target's small card where its nameplate is (Target.lua's follow) */
+.view .plate { position: absolute; z-index: 2; display: flex; align-items: center; gap: 4px; transform: translate(-50%, -50%);
+  pointer-events: none; }
+.view .plate[hidden] { display: none; }
+.view .plate .pcol { display: grid; justify-items: start; gap: 1px; }
+.view .plate .pname { font-family: var(--font-display); font-size: 12px; line-height: 1.1; white-space: nowrap; text-shadow: 0 0 2px #000, 0 1px 2px #000; }
+.view .plate canvas { position: static; inset: auto; display: block; } /* not the scene's full-size canvases */
+.view .plate [hidden] { display: none; } /* a target without power: no bar, no room */
+.view .plate .pauras { display: flex; gap: 2px; min-height: 0; }
+.view .plate .pauras img { display: block; box-sizing: border-box; border: 1px solid #cc0000; } /* a debuff's edge, the card's */
+/* its portrait: the game draws the target's face; a stand-in, the kind's colour in a dark disc, in the card's gold ring */
+.view .plate .pface { flex: none; border-radius: 50%; box-sizing: border-box; border: 2px solid #c9a24a;
+  box-shadow: 0 0 0 1px #3a2a10, inset 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.view .flash { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 58%, rgba(255, 246, 214, 0.95), rgba(255, 238, 190, 0.35) 45%, rgba(255, 238, 190, 0) 75%); }
+.view .flash.on { animation: flash 1.3s ease-out; }
+@keyframes flash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+.gamewin.bag { top: auto; min-width: 0; }
+.gamewin header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 6px 5px 10px;
+  background: linear-gradient(#2a2418, #19150e); border-bottom: 1px solid var(--brass-dim); border-radius: 6px 6px 0 0;
+  font-family: var(--font-display); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--brass); }
+.gamewin .wclose { width: 22px; height: 20px; padding: 0; font-size: 14px; line-height: 1; color: var(--brass); background: rgba(10, 12, 15, 0.6); }
+.gamewin .wbody { padding: 10px; font-size: 13px; }
+.gamewin .who { margin: 0 0 8px; color: #ffd100; }
+.gamewin .who b { color: #fff; font-size: 15px; }
+.gamewin dl { display: grid; grid-template-columns: auto auto; gap: 3px 16px; margin: 0; }
+.gamewin dt { color: var(--muted); }
+.gamewin dd { margin: 0; text-align: right; font-family: var(--font-mono); font-size: 12px; }
+.bagslots { display: grid; grid-template-columns: repeat(4, 36px); gap: 4px; }
+.bagslot { position: relative; width: 36px; height: 36px; padding: 0; border-radius: 3px; background: #0a0c10; border-color: #3a3428; }
+.bagslot img { position: absolute; inset: 2px; width: 30px; height: 30px; border-radius: 2px; }
+.bagslot .count { position: absolute; right: 3px; bottom: 1px; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 0 2px #000, 0 1px 2px #000; }
+.gamewin .spells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-width: 460px; }
+.gamewin .spell { display: flex; align-items: center; gap: 8px; padding: 4px 6px; text-align: left; background: #12151b; }
+.gamewin .spell img { width: 32px; height: 32px; border-radius: 3px; flex: none; }
+.gamewin .spell span { display: grid; min-width: 0; }
+.gamewin .spell small { color: var(--muted); font-size: 11px; line-height: 1.3; }
+.gamewin .spell.locked { opacity: 0.55; cursor: default; }
+.gamewin .spell.locked img { filter: grayscale(1); }
+.hudbar .tip p.use { color: #1eff00; }
+#combatLog { margin: 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.45; color: var(--muted); }
+#combatLog li:first-child { color: var(--fg); }
+#combatLog:empty { display: none; }
+#luaText { width: 100%; box-sizing: border-box; font-family: var(--font-mono); font-size: 12px; color: var(--fg); background: #0c0f13; border: 1px solid var(--line); border-radius: 4px; padding: 6px; resize: none; }
+/* Touch screens (sim_bar.js's touch row, the joystick; the hint swapped for theirs) */
+.view { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.hudbar .touchrow { position: absolute; display: flex; gap: 6px; pointer-events: none; } /* its gaps are the scene's */
+.hudbar .touchrow[hidden], .hudbar .touchforms[hidden], .hudbar .big[hidden] { display: none; }
+.hudbar .big { position: relative; width: var(--touch, 46px); height: var(--touch, 46px); padding: 0; border-radius: 9px; overflow: hidden;
+  pointer-events: auto;
+  background: rgba(10, 12, 15, 0.7); border: 2px solid var(--brass-dim); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); touch-action: manipulation; }
+.hudbar .big .icon { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); border-radius: 6px; }
+.hudbar .big .cd { position: absolute; inset: 3px; border-radius: 6px; background: conic-gradient(rgba(0, 0, 0, 0.62) var(--p, 0%), transparent 0); }
+.hudbar .big.nopower .icon { filter: brightness(0.6) sepia(1) hue-rotate(185deg) saturate(2.4); }
+.hudbar .big.unusable .icon { filter: grayscale(1) brightness(0.5); }
+.hudbar .big.far { border-color: #c0392b; }
+.hudbar .big.active, .hudbar .big.checked { border-color: #f2e2a0; box-shadow: 0 0 10px rgba(242, 226, 160, 0.7); }
+.hudbar .big.jump { width: calc(var(--touch, 46px) * 1.26); font-family: var(--font-display); font-size: 13px; color: var(--brass); background: rgba(42, 36, 24, 0.85); }
+.hudbar .touchforms { position: absolute; z-index: 7; display: grid; gap: 6px; padding: 6px; pointer-events: auto;
+  background: rgba(12, 14, 20, 0.94); border: 1px solid var(--brass-dim); border-radius: 8px; }
+.hudbar .touchforms .big { width: auto; --touch: 46px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 52px; color: var(--fg); }
+.hudbar .touchforms .big .icon { inset: 3px auto 3px 3px; width: 40px; height: 40px; }
+.view .stick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; pointer-events: none;
+  border: 2px solid rgba(242, 226, 160, 0.45); background: rgba(10, 12, 15, 0.25); }
+.view .stick i { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: rgba(242, 226, 160, 0.55); box-shadow: 0 0 12px rgba(242, 226, 160, 0.5); }
+.view .stick[hidden] { display: none; }
+@media (max-width: 900px) and (orientation: portrait), (max-width: 520px) { /* a phone upright: the scene, the controls under it */
+  body { overflow: auto; }
+  .wrap { height: auto; padding-inline: 8px; padding-block: 6px 12px; }
+  .view { position: relative; height: 66vh; height: 66dvh; }
+  .menu { position: static; width: auto; max-height: none; margin-top: 10px; }
+  .menu .titlebar { cursor: default; }
+  header p { font-size: 12px; }
+}
+@media (max-height: 520px) and (orientation: landscape) { /* a phone on its side: the scene the whole height */
+  .wrap { padding-inline: 8px; padding-block: 4px 6px; gap: 4px; }
+  header h1 { font-size: 13px; }
+  header p { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>WoW HUD Sim</h1>
+    <p>Move, shapeshift, take hits and target things, and watch Spheres' HUD react, run by the add-on's own Lua.</p>
+  </header>
+
+  <div class="stage">
+    <div class="view" id="view" tabindex="0" aria-label="Game view: drag with the left button to look round you, the right to turn, both to run; the keys move you; the wheel zooms the camera, or the map over the minimap">
+      <canvas id="gl"></canvas>
+      <div class="flash" id="flash" aria-hidden="true"></div>
+      <div class="plate" id="plate" aria-hidden="true" hidden><div class="pface" id="plateFace"></div><div class="pcol"><div class="pauras" id="plateAuras"></div><span class="pname" id="plateName"></span><canvas id="plateHealth"></canvas><canvas id="platePower"></canvas></div></div>
+      <div class="popup" id="popup" role="alertdialog" aria-live="assertive" hidden><p id="popupText"></p><div class="pbuttons" id="popupButtons"></div></div>
+      <div class="talkhint" id="talkHint" hidden></div>
+      <section class="gamewin gossip" id="gossip" aria-label="Spirit Healer" hidden>
+        <header><span>Spirit Healer</span><button type="button" class="wclose" id="gossipClose" aria-label="Close">&times;</button></header>
+        <div class="wbody">
+          <p class="greet">It is not yet your time. I shall aid your journey back to the realm of the living... For a price.</p>
+          <button type="button" class="option" id="gossipRevive"><i aria-hidden="true"></i>Return me to life.</button>
+        </div>
+      </section>
+      <div class="corner">
+        <div class="hint"><span>Left drag: look</span> · <span>right drag: turn</span> · <span>both: run</span> · <span>A D turn</span> · <span>Q E strafe</span> · <span>W run</span> · <span>S back</span> · <span>Space jump</span> · <span>Tab: targets (Shift: reverse)</span> · <span>1-6 spells</span> · <span>stance ring or Shift+1-5: forms</span> · <span>C P B: character, spellbook, bags</span> · <span>wheel: zoom (over the minimap: the map)</span> · <span>O controls</span></div>
+        <div class="hint touchhint" hidden><span>Left side: move</span> · <span>drag: turn</span> · <span>two fingers: look, pinch to zoom</span> · <span>tap spells, the stance ring or jump</span></div>
+        <div class="busy" id="busy" hidden role="status" aria-live="polite"><span class="spin" aria-hidden="true"></span>
+          <span id="busyText">Rendering…</span><b id="busyTime">0.0 s</b></div>
+      </div>
+    </div>
+
+    <div class="loading" id="loading" role="status" aria-live="polite">
+      <div class="card">
+        <b>WoW HUD Sim</b>
+        <div class="track" aria-hidden="true"><i id="loadBar"></i></div>
+        <span id="loadText">Starting the add-on's Lua…</span>
+      </div>
+    </div>
+
+    <aside class="menu" id="menu" aria-label="Controls">
+      <div class="titlebar" id="menuBar">
+        <span class="title">Controls</span>
+        <button type="button" class="wbtn" id="menuFold" aria-expanded="true" aria-label="Minimize the controls (O)" title="Minimize (O)">&#8211;</button>
+      </div>
+      <div class="menubody" id="menuBody">
+        <div class="tabs" role="tablist" aria-label="Controls">
+          <button type="button" role="tab" id="tab-play" aria-controls="pane-play" aria-selected="false">Play</button>
+          <button type="button" role="tab" id="tab-character" aria-controls="pane-character" aria-selected="false">Character</button>
+          <button type="button" role="tab" id="tab-hud" aria-controls="pane-hud" aria-selected="false">HUD</button>
+          <button type="button" role="tab" id="tab-tuning" aria-controls="pane-tuning" aria-selected="false">Tuning</button>
+        </div>
+        <div class="tools" role="toolbar" aria-label="This tab's groups">
+          <button type="button" id="openAll">Open all</button>
+          <button type="button" id="closeAll">Close all</button>
+          <span class="spacer"></span>
+          <button type="button" id="resetAll" class="primary" title="Every knob back to its starting value, the slosh and the glows to the game's, the camera behind you at its usual distance">Reset all</button>
+        </div>
+        <div class="note" id="status" aria-live="polite">Starting Lua 5.1 in the page…</div>
+        <div class="pane" role="tabpanel" id="pane-play" aria-labelledby="tab-play" hidden>
+          <div class="group" id="fightGroup">
+            <h2>Fight</h2>
+            <div class="buttons">
+              <button id="pick" type="button" class="primary">Pick a fight</button>
+              <button id="auto" type="button" aria-pressed="false">Fight for me</button>
+              <button id="die" type="button" title="Fall dead: release your spirit, find your corpse or the Spirit Healer">Die</button>
+            </div>
+            <div class="choice" role="radiogroup" aria-label="Foe">
+              <span class="name">Foe</span>
+              <label><input type="radio" name="foe" value="hostile" checked> A Gnarlpine (comes for you)</label>
+              <label><input type="radio" name="foe" value="neutral"> A nightsaber (only if struck)</label>
+            </div>
+            <small>In the scene: 1-6 cast the spells on the upper row (they change with your form), the stance ring by your health sphere opens the Druid forms, and Shift+1-5 remain shortcuts. Esc stops a cast. The ring in the right frame well is the game menu (Character C, Spellbook P); the bag on the row opens the bags (B), their potions usable in a fight. Face your target; casting needs you standing still. Fight for me plays it all, one fight after another: a caster who turns bear, a cat, a moonkin.</small>
+            <ol id="combatLog" aria-live="polite" aria-label="Combat log"></ol>
+          </div>
+
+          <div class="group">
+            <h2>Target (Target Style "Sphere" or "Nameplate", experimental)</h2>
+            <div class="choice" role="radiogroup" aria-label="Target style">
+              <span class="name">Style</span>
+              <label><input type="radio" name="tstyle" value="nameplate" checked> Nameplate (its card on its nameplate; the default)</label>
+              <label><input type="radio" name="tstyle" value="sphere"> Sphere</label>
+            </div>
+            <div class="choice" role="radiogroup" aria-label="Target">
+              <label><input type="radio" name="target" value="none" checked> None</label>
+              <label><input type="radio" name="target" value="hostile"> Hostile</label>
+              <label><input type="radio" name="target" value="neutral"> Neutral</label>
+              <label><input type="radio" name="target" value="friendly"> Friendly</label>
+              <label><input type="radio" name="target" value="tapped"> Tapped</label>
+            </div>
+            <div class="choice" role="radiogroup" aria-label="Target power">
+              <label><input type="radio" name="tpower" value="mana" checked> Mana</label>
+              <label><input type="radio" name="tpower" value="rage"> Rage</label>
+              <label><input type="radio" name="tpower" value="none"> None (whole sphere)</label>
+            </div>
+            <div class="row"><label for="thp">Target health</label><output id="thpOut" for="thp"></output>
+              <input id="thp" type="range" min="0" max="100" step="0.5" value="64"></div>
+            <div class="row"><label for="tpp">Target power</label><output id="tppOut" for="tpp"></output>
+              <input id="tpp" type="range" min="0" max="100" step="0.5" value="70"></div>
+            <small>Its portrait is a stand-in here (the game draws portraits): a dark disc in a brass ring.</small>
+          </div>
+
+          <div class="group">
+            <h2>Pet</h2>
+            <div class="choice" role="radiogroup" aria-label="Pet">
+              <label><input type="radio" name="pet" value="none" checked> None</label>
+              <label><input type="radio" name="pet" value="beast"> Beast (health)</label>
+              <label><input type="radio" name="pet" value="demon"> Demon (health and mana)</label>
+            </div>
+            <div class="row"><label for="php">Pet health</label><output id="phpOut" for="php"></output>
+              <input id="php" type="range" min="0" max="100" step="0.5" value="60"></div>
+            <div class="row"><label for="pmp">Pet mana</label><output id="pmpOut" for="pmp"></output>
+              <input id="pmp" type="range" min="0" max="100" step="0.5" value="40"></div>
+          </div>
+
+          <div class="group">
+            <h2>Blows</h2>
+            <div class="row"><label for="hit">Blow, of the maximum health</label><output id="hitOut" for="hit"></output>
+              <input id="hit" type="range" min="5" max="100" step="1" value="60"></div>
+            <div class="choice"><label><input type="checkbox" id="hidden" checked> Hidden values, as in game</label></div>
+            <div class="buttons">
+              <button id="hitYou" type="button">Hit you</button>
+              <button id="hitPet" type="button">Hit the pet</button>
+            </div>
+            <small>Over 25% cracks the glass, over 40% a larger crack, over 60% a huge one (Sphere.lua CRACK): it grows in 0.5 s, holds 3 s, mends in 2 s. The game judges the blow through the crack's gates, as in game; hidden values: boxed as Forever's. A blow lowers the health slider by its size (to 5% at least).</small>
+          </div>
+        </div>
+        <div class="pane" role="tabpanel" id="pane-character" aria-labelledby="tab-character" hidden>
+          <div class="group">
+            <h2>You</h2>
+            <div class="choice" role="radiogroup" aria-label="Power">
+              <span class="name">Power</span>
+              <label><input type="radio" name="power" value="mana" checked> Mana</label>
+              <label><input type="radio" name="power" value="rage"> Rage (inner sphere)</label>
+              <label><input type="radio" name="power" value="energy"> Energy (inner sphere)</label>
+            </div>
+            <div class="choice" role="radiogroup" aria-label="Form">
+              <span class="name">Form, a druid's (Shift+1-5 in the scene; the form's key again: back to caster)</span>
+              <label><input type="radio" name="form" value="caster" checked> Caster</label>
+              <label><input type="radio" name="form" value="bear"> Bear</label>
+              <label><input type="radio" name="form" value="cat"> Cat</label>
+              <label><input type="radio" name="form" value="travel"> Travel</label>
+              <label><input type="radio" name="form" value="moonkin"> Moonkin</label>
+            </div>
+            <div class="choice" role="radiogroup" aria-label="Class">
+              <span class="name">Class (the mana's magic)</span>
+              <label><input type="radio" name="class" value="paladin" checked> Paladin</label>
+              <label><input type="radio" name="class" value="priest"> Priest</label>
+              <label><input type="radio" name="class" value="druid"> Druid</label>
+              <label><input type="radio" name="class" value="shaman"> Shaman</label>
+              <label><input type="radio" name="class" value="mage"> Any other</label>
+            </div>
+            <div class="row"><label for="level">Level</label><output id="levelOut" for="level"></output>
+          <input id="level" type="range" min="1" max="60" step="1" value="30">
+          <small>Spells and forms come as you level, as in game: Moonfire at 4, bear at 10, cat at 20, travel at 30, moonkin at 40. At 60 the experience bar gives way.</small></div>
+        <div class="row"><label for="hp">Health</label><output id="hpOut" for="hp"></output>
+              <input id="hp" type="range" min="0" max="100" step="0.5" value="70"></div>
+            <div class="row"><label for="pp">Power</label><output id="ppOut" for="pp"></output>
+              <input id="pp" type="range" min="0" max="100" step="0.5" value="55">
+              <small>Under 3% the climb and the wavy top fade out, as in game.</small></div>
+            <button id="regen" type="button">Regeneration tick</button>
+          </div>
+
+          <div class="group">
+            <h2>Moving</h2>
+            <div class="read"><span>speed <b id="speedNow">0.0 yd/s</b></span><span><b id="airNow">on the ground</b></span></div>
+            <div class="buttons">
+              <button id="run" type="button" aria-pressed="false">Start running</button>
+              <button id="ledge" type="button">Walk off a ledge</button>
+              <button id="hopLeft" type="button">Strafe left, 0.6 s</button>
+              <button id="hopRight" type="button">Strafe right, 0.6 s</button>
+              <button id="jump" type="button">Jump</button>
+              <button id="bigFall" type="button">Long fall, 2.5 s</button>
+            </div>
+          </div>
+
+          <div class="group">
+            <h2>Turning</h2>
+            <div class="meter">
+              <div class="track"><div class="fill" id="meterFill"></div><div class="mark" id="meterMark"></div></div>
+              <div class="read"><span>now <b id="turnNow">0°/s</b></span><span>threshold <b id="turnThr">0°/s</b></span></div>
+            </div>
+            <div class="buttons">
+              <button id="flickLeft" type="button">Fast flick left</button>
+              <button id="flickRight" type="button">Fast flick right</button>
+              <button id="keyTurn" type="button">Key turn, 1 s</button>
+              <button id="spin" type="button">Fast turn, 1.5 s</button>
+            </div>
+          </div>
+        </div>
+        <div class="pane" role="tabpanel" id="pane-hud" aria-labelledby="tab-hud" hidden>
+          <div class="group">
+            <h2>Frame</h2>
+            <div class="choice" role="radiogroup" aria-label="Statues">
+              <span class="name">Statues</span>
+              <label><input type="radio" name="statues" value="modern" checked> Modern</label>
+              <label><input type="radio" name="statues" value="charcoal"> Charcoal</label>
+              <label><input type="radio" name="statues" value="none"> None</label>
+            </div>
+            <div class="row"><label for="xp">Experience</label><output id="xpOut" for="xp"></output>
+              <input id="xp" type="range" min="0" max="100" step="0.5" value="46"></div>
+            <div class="row"><label for="rested">Rested</label><output id="restedOut" for="rested"></output>
+              <input id="rested" type="range" min="0" max="100" step="0.5" value="20"></div>
+            <div class="choice"><label><input type="checkbox" id="resting" checked> Resting (the bar breathes)</label></div>
+            <div class="choice"><label><input type="checkbox" id="valuesAlways" checked> Values always shown (the sphereValuesAlways setting; off: hover a sphere)</label></div>
+          </div>
+
+          <div class="group">
+            <h2>View</h2>
+            <div class="choice" role="radiogroup" aria-label="Size">
+              <label><input type="radio" name="size" value="game" id="sizeGame" checked> Game size</label>
+              <label><input type="radio" name="size" value="large" id="sizeLarge"> Fill the view</label>
+            </div>
+            <small id="worldNote">The world: a cartoon Teldrassil at twilight turning and sliding round you, its trees, rocks, moonwells, lanterns and mushrooms solid; five creatures wander near your starting spot. Enter the timber lodge through its open doorway to see its floor plan on the minimap. Your pet follows you (a wolf for a beast, a voidwalker for a demon), and your selected target stands ahead.</small>
+            <label class="file">Use a minimap screenshot<input id="mapFile" type="file" accept="image/*"></label>
+            <small>The illustrated forest stands in for the game's terrain. A square screenshot can replace it.</small>
+          </div>
+        </div>
+        <div class="pane" role="tabpanel" id="pane-tuning" aria-labelledby="tab-tuning" hidden>
+          <div class="group" id="lightGroup">
+            <h2>Light (on the glass)</h2>
+            <small>Drag the sun round the dial: every sphere's highlight, outline and shadows follow it.</small>
+            <div class="lightdial">
+              <canvas id="lightDial" tabindex="0" role="slider" aria-label="Light direction: drag the sun; arrow keys turn it, up and down raise and lower it; double-click: back to the game's"></canvas>
+              <div class="lightread">
+                <output id="lightOut" aria-live="polite"></output>
+                <small>Round the dial: where it shines from. Towards the middle: higher, in front of the glass.</small>
+              </div>
+            </div>
+            <div class="note" id="fxStatus" aria-live="polite">Loading the effects…</div>
+          </div>
+
+          <div class="group" id="sloshGroup">
+            <h2>Slosh (Motion.lua SLOSH)</h2>
+          </div>
+
+          <div class="group" id="effectsGroup">
+            <h2>Advanced glows and shadows (make_media.py)</h2>
+            <small>Each of make_media.py's effects on its own; each change re-renders the textures it touches. Changed values show in brass.</small>
+          </div>
+
+          <div class="group" id="keepItGroup">
+            <h2>Keep it</h2>
+            <button id="export" type="button" class="primary">Export to the add-on</button>
+            <small>Writes the changed values into Motion.lua and tools/make_media.py and regenerates the textures in Media/. Then <code>make test deploy</code> takes them to the game.</small>
+            <div class="buttons">
+              <button id="reset" type="button">Game values</button>
+              <button id="copy" type="button">Copy SLOSH as Lua</button>
+            </div>
+            <textarea id="luaText" rows="3" readonly aria-label="SLOSH as Lua"></textarea>
+            <div class="note" id="copied" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  // The export/copy controls are useful while developing the add-on, but should stay out of
+  // the shared simulator unless its URL explicitly opts in: ?keepIt=1.
+  const KEEP_IT_ENABLED = new URLSearchParams(location.search).get("keepIt") === "1";
+  $("keepItGroup").hidden = !KEEP_IT_ENABLED;
+  // a touch screen: a phone or tablet (touch controls, the touch row; drawn at no more than 1.5 pixels a CSS pixel)
+  const TOUCH = matchMedia("(pointer: coarse)").matches;
+  const pixelRatio = () => Math.min(window.devicePixelRatio || 1, TOUCH ? 1.5 : 2);
+  if (TOUCH) { document.querySelector(".hint:not(.touchhint)").hidden = true; document.querySelector(".touchhint").hidden = false; }
+  const GAME_PX_PER_UNIT = 1.9; // the HUD in the player's screenshots, device pixels per unit
+  const METER_MAX = 1000;
+  const MAP_YARDS = 466;        // the minimap's width in yards at the game's usual zoom (view radius 233)
+  const MAP_SPAN = 1800;        // the illustrated terrain's width in yards
+  const QUEST = { north: 320, west: -300 }; // a tracked objective northeast of the starting point
+
+  // ------------------------------------------------------------- the Lua side: Lua 5.1 in the page (sim_lua.js), asked
+  // a request at a time, its reply at once
+  let askLua = null, askGameUI = null, gameUIState = null;
+  const ask = line => (askLua ? askLua(line) : { error: "Lua isn't started yet" });
+  // where the add-on's files, its textures and the glows' Python come from: make sim's server (sim_host.js), or
+  // on the public page static files and Pyodide (make site puts sim_host_site.js in its place)
+  let host = null;
+  const hostReady = import("./sim_host.js").then(m => (host = m.host));
+  function status(text) { $("status").textContent = text; $("status").hidden = !text; }
+  let broken = ""; // a part that didn't load: said with every status after it (each frame's would wipe it)
+  // the loading screen: its steps, and the textures the first frames asked for (by name), until all have come
+  const loading = { lua: false, world: false, bar: false, asked: new Set(), got: new Set(), calm: 0, done: false };
+  function loadFailed(text) {
+    $("loadText").textContent = text;
+    $("loading").classList.add("failed");
+  }
+  function loadingFrame() {
+    if (loading.done || $("loading").classList.contains("failed")) return;
+    const steps = loading.lua + loading.world + loading.bar, asked = loading.asked.size, got = loading.got.size;
+    const expect = steps === 3 ? asked : Math.max(asked, 30); // about 30 textures to the first picture
+    $("loadBar").style.width = Math.min(100, (steps + got) / (3 + expect) * 100) + "%";
+    $("loadText").textContent = !loading.lua ? "Starting the add-on's Lua…" : !loading.world || !loading.bar ? "Building the world…"
+      : `Loading textures: ${got} of ${asked}`;
+    loading.calm = steps === 3 && asked > 0 && got === asked ? loading.calm + 1 : 0; // nothing new asked for a few frames
+    if (loading.calm < 3) return;
+    loading.done = true;
+    $("loading").classList.add("gone");
+    setTimeout(() => { $("loading").hidden = true; }, 450);
+  }
+  const pick = name => document.querySelector(`input[name="${name}"]:checked`).value;
+  const bodyOf = id => $(id).querySelector(".fold-body"); // a group's knobs, under its folding heading
+  const groups = []; // the panel's folding groups (built at the end): each shows its Reset while off its start
+  function refreshResets() { for (const g of groups) g.reset.hidden = !g.changed(); }
+  for (const id of ["hp", "pp", "php", "pmp", "xp", "rested", "hit", "thp", "tpp", "level"]) {
+    const show = () => { $(id + "Out").textContent = $(id).value + (id === "level" ? "" : "%"); };
+    $(id).addEventListener("input", show);
+    show();
+  }
+
+  // ------------------------------------------------------------- the slosh's tuning: Motion.lua's SLOSH, as sliders
+  const META = {
+    threshold: ["Threshold", 0, 900, 10, v => v + "°/s", "Turns slower than this do nothing (key turns are 180°/s)."],
+    strength: ["Strength", 0, 3, 0.05, v => v.toFixed(2)],
+    lean: ["Lean while turning", 0, 1, 0.05, v => v.toFixed(2)],
+    weight: ["Weight", 0.02, 1, 0.01, v => v.toFixed(2) + " s", "Seconds for a push to take hold; one the other way cancels gradually."],
+    move: ["Moving", 0, 2, 0.05, v => v.toFixed(2), "Strafing sloshes sideways, starting and stopping a run bobs."],
+    float: ["Float in the air", 0, 1.5, 0.05, v => v.toFixed(2)],
+    landing: ["Landing", 0, 2, 0.05, v => v.toFixed(2)],
+    wobble: ["Wobble", 0.2, 2.5, 0.05, v => v.toFixed(2) + " Hz", "The sideways slosh's frequency (health piece)."],
+    settle: ["Settling", 0.05, 0.9, 0.01, v => v.toFixed(2)],
+    climb: ["Climb", 2, 18, 1, v => v + " units"],
+    drift: ["Swirl drift", 0, 2, 0.05, v => v.toFixed(2)],
+    churn: ["Churn", 0, 2, 0.05, v => v.toFixed(2)],
+  };
+  const slosh = {}, game = {}, order = [], sliders = {};
+  function luaLine() {
+    return "local SLOSH = { " + order.map(k => k + " = " + (Number.isInteger(slosh[k]) ? slosh[k] : Number(slosh[k].toFixed(3)))).join(", ") + " }";
+  }
+  function placeMark() {
+    $("meterMark").style.left = `calc(${Math.min(100, (slosh.threshold || 0) / METER_MAX * 100)}% - 1px)`;
+    $("turnThr").textContent = (slosh.threshold || 0) + "°/s";
+  }
+  function buildSliders(init) {
+    Object.assign(slosh, init.slosh);
+    Object.assign(game, init.game);
+    // Motion.lua's order (META's), then any value it gained since
+    order.push(...Object.keys(META).filter(k => k in game), ...init.keys.filter(k => !(k in META)));
+    for (const key of order) {
+      const [label, min, max, step, fmt, note] = META[key] || [key, 0, Math.max(1, game[key] * 3), 0.01, v => String(v)];
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<label for="s_${key}">${label}</label><output id="s_${key}Out" for="s_${key}"></output>` +
+        `<input id="s_${key}" type="range" min="${min}" max="${max}" step="${step}">` + (note ? `<small>${note}</small>` : "");
+      bodyOf("sloshGroup").appendChild(row);
+      const input = $("s_" + key), out = $("s_" + key + "Out");
+      const show = () => { out.textContent = fmt(slosh[key]); out.classList.toggle("changed", slosh[key] !== game[key]); };
+      input.value = slosh[key];
+      show();
+      input.addEventListener("input", () => {
+        slosh[key] = Number(input.value);
+        show();
+        $("luaText").value = luaLine();
+        placeMark();
+        ask("set " + key + " " + slosh[key]);
+      });
+      sliders[key] = () => { input.value = slosh[key]; show(); };
+    }
+    $("luaText").value = luaLine();
+    placeMark();
+  }
+  function resetSlosh() {
+    Object.assign(slosh, game);
+    for (const key of order) sliders[key]();
+    $("luaText").value = luaLine();
+    placeMark();
+    ask("reset");
+  }
+  $("reset").addEventListener("click", () => {
+    resetSlosh();
+    resetEffects();
+    refreshResets();
+  });
+  $("copy").addEventListener("click", () => {
+    const text = luaLine(), box = $("luaText");
+    box.value = text;
+    const fallback = () => { box.focus(); box.select(); $("copied").textContent = "Selected: press Cmd+C or Ctrl+C."; };
+    try { navigator.clipboard.writeText(text).then(() => { $("copied").textContent = "Copied: paste it over Motion.lua's SLOSH."; }, fallback); }
+    catch (e) { fallback(); }
+  });
+
+  // ------------------------------------------------------------- the glows and shadows: make_media.py's, as sliders
+  const effects = request => hostReady.then(h => h.effects(request));
+  const fx = { effects: [], groups: {}, now: {}, game: {}, pending: new Set(), rendering: false, timer: 0, show: {} };
+  const copy = v => Array.isArray(v) ? v.slice() : v;
+  const same = (a, b) => Array.isArray(a) ? a.every((x, i) => Math.abs(x - b[i]) < 1e-9) : Math.abs(a - b) < 1e-9;
+  function fxStatus(text) { $("fxStatus").textContent = text; }
+  // the indicator over the scene while textures render (a preview) or an export writes them
+  let busySince = 0, busyTimer = 0;
+  function showBusy(text) {
+    if (text) {
+      $("busyText").textContent = text;
+      if (!busyTimer) {
+        busySince = performance.now();
+        busyTimer = setInterval(() => { $("busyTime").textContent = ((performance.now() - busySince) / 1000).toFixed(1) + " s"; }, 100);
+      }
+      $("busyTime").textContent = ((performance.now() - busySince) / 1000).toFixed(1) + " s";
+      $("busy").hidden = false;
+    } else {
+      clearInterval(busyTimer);
+      busyTimer = 0;
+      $("busy").hidden = true;
+    }
+  }
+  function fxChanged() {
+    const out = {};
+    for (const e of fx.effects) if (!same(fx.now[e.name], fx.game[e.name])) out[e.name] = fx.now[e.name];
+    return out;
+  }
+  function buildEffects(reply) {
+    fx.effects = reply.effects;
+    fx.groups = reply.groups;
+    let section = null;
+    for (const e of fx.effects) {
+      fx.now[e.name] = copy(e.value);
+      fx.game[e.name] = copy(e.value);
+      if (e.name === "LIGHT") { fx.show.LIGHT = drawDial; continue; } // the dial, not sliders
+      if (e.section !== section) {
+        section = e.section;
+        const h = document.createElement("h3");
+        h.textContent = section;
+        bodyOf("effectsGroup").appendChild(h);
+      }
+      const shows = [];
+      e.parts.forEach((part, i) => {
+        const id = `fx_${e.name}_${i}`, row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `<label for="${id}">${part.label}</label><output id="${id}Out" for="${id}"></output>` +
+          `<input id="${id}" type="range" min="${part.min}" max="${part.max}" step="${part.step}">`;
+        bodyOf("effectsGroup").appendChild(row);
+        const input = $(id), out = $(id + "Out");
+        const get = () => Array.isArray(fx.now[e.name]) ? fx.now[e.name][i] : fx.now[e.name];
+        const gameValue = () => Array.isArray(fx.game[e.name]) ? fx.game[e.name][i] : fx.game[e.name];
+        const show = () => {
+          input.value = get();
+          out.textContent = Number(get()).toFixed(part.step >= 1 ? 0 : part.step >= 0.01 ? 2 : 3);
+          out.classList.toggle("changed", Math.abs(get() - gameValue()) > 1e-9);
+        };
+        input.addEventListener("input", () => {
+          const v = Number(input.value);
+          if (Array.isArray(fx.now[e.name])) fx.now[e.name][i] = v; else fx.now[e.name] = v;
+          show();
+          fx.pending.add(e.name);
+          clearTimeout(fx.timer);
+          fx.timer = setTimeout(renderEffects, 350);
+        });
+        show();
+        shows.push(show);
+      });
+      fx.show[e.name] = () => shows.forEach(f => f());
+    }
+    buildSimple(reply.simple);
+    drawDial();
+    fxStatus("");
+  }
+  // a change to the effects: rendered at once if nothing renders (the light's drag: a render after the other,
+  // each with where it is then), else after a pause (a slider's drag)
+  function changeEffects(names, now) {
+    for (const name of names) { fx.pending.add(name); if (fx.show[name]) fx.show[name](); }
+    clearTimeout(fx.timer);
+    if (now) renderEffects(); else fx.timer = setTimeout(renderEffects, 350);
+  }
+  // Shine, Outline, Shadow: each scales its effects' numbers from the game's together (sim_effects.py SIMPLE)
+  const simple = {};
+  function scaleSimple(knob, k) {
+    knob.k = k;
+    for (const [name, indices] of Object.entries(knob.scale)) {
+      const e = fx.effects.find(x => x.name === name);
+      for (const i of indices) {
+        const part = e.parts[i], game = Array.isArray(fx.game[name]) ? fx.game[name][i] : fx.game[name];
+        const v = Math.round(Math.min(part.max, Math.max(part.min, game * k)) * 1e4) / 1e4;
+        if (Array.isArray(fx.now[name])) fx.now[name][i] = v; else fx.now[name] = v;
+      }
+    }
+    return Object.keys(knob.scale);
+  }
+  function buildSimple(list) {
+    const before = $("fxStatus");
+    for (const knob of list) {
+      const id = "simple_" + knob.key, row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<label for="${id}">${knob.label}</label><output id="${id}Out" for="${id}"></output>` +
+        `<input id="${id}" type="range" min="0" max="200" step="5" value="100">`;
+      before.before(row);
+      const input = $(id), show = () => { $(id + "Out").textContent = input.value + "%"; };
+      simple[knob.key] = { ...knob, k: 1, input, show };
+      input.addEventListener("input", () => { show(); changeEffects(scaleSimple(simple[knob.key], input.value / 100)); });
+      show();
+    }
+  }
+  // The light's dial: the sun where the light comes from, seen from in front (round the edge: from the side,
+  // grazing; in the middle: from straight in front), over a ball lit by it.
+  const dial = $("lightDial");
+  function lightNow() { return fx.now.LIGHT || [-0.3235, 0.7189, 0.6152]; }
+  function lightWords([x, y, z]) {
+    const hour = ((3 - Math.atan2(y, x) * 180 / Math.PI / 30) % 12 + 12) % 12, half = Math.round(hour * 2) / 2;
+    const clock = (Math.floor(half) || 12) + (half % 1 ? ":30" : " o'clock");
+    return `From ${clock}, ` + (z > 0.85 ? "in front" : z > 0.5 ? "high" : z > 0.2 ? "low" : "grazing");
+  }
+  function drawDial() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1), size = 120, n = Math.round(size * dpr);
+    if (dial.width !== n) { dial.width = dial.height = n; }
+    const g = dial.getContext("2d"), r = size / 2 - 12, c = size / 2, [lx, ly, lz] = lightNow();
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, size, size);
+    // the ball: dark glass, lit from the light (the highlight halfway between it and the eye)
+    const hn = Math.hypot(lx, ly, lz + 1), hx = c + lx / hn * r, hy = c - ly / hn * r;
+    const body = g.createRadialGradient(hx, hy, 0, c, c, r * 1.15);
+    body.addColorStop(0, "#3a4250"); body.addColorStop(0.55, "#161b22"); body.addColorStop(1, "#07090c");
+    g.fillStyle = body;
+    g.beginPath(); g.arc(c, c, r, 0, 2 * Math.PI); g.fill();
+    const spot = g.createRadialGradient(hx, hy, 0, hx, hy, r * 0.32);
+    spot.addColorStop(0, "rgba(255, 250, 236, 0.85)"); spot.addColorStop(1, "rgba(255, 250, 236, 0)");
+    g.fillStyle = spot;
+    g.beginPath(); g.arc(c, c, r, 0, 2 * Math.PI); g.fill();
+    g.strokeStyle = "rgba(201, 165, 101, 0.45)"; g.lineWidth = 1;
+    g.beginPath(); g.arc(c, c, r + 6, 0, 2 * Math.PI); g.stroke(); // the sun's track at the edge: grazing
+    // the sun
+    const sx = c + lx * (r + 6), sy = c - ly * (r + 6);
+    g.strokeStyle = "#e8c77e"; g.lineWidth = 1.5; g.lineCap = "round";
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      g.beginPath(); g.moveTo(sx + Math.cos(a) * 7.5, sy + Math.sin(a) * 7.5); g.lineTo(sx + Math.cos(a) * 10.5, sy + Math.sin(a) * 10.5); g.stroke();
+    }
+    g.fillStyle = "#f2d38c";
+    g.beginPath(); g.arc(sx, sy, 5.5, 0, 2 * Math.PI); g.fill();
+    const words = lightWords([lx, ly, lz]);
+    $("lightOut").textContent = words;
+    $("lightOut").classList.toggle("changed", !!fx.game.LIGHT && !same(lightNow(), fx.game.LIGHT));
+    dial.setAttribute("aria-valuetext", words);
+  }
+  function setLight(x, y) {
+    const r = Math.hypot(x, y), k = r > 0.98 ? 0.98 / r : 1; // never quite behind the glass
+    x *= k; y *= k;
+    const round = v => Math.round(v * 1e4) / 1e4;
+    fx.now.LIGHT = [round(x), round(y), round(Math.sqrt(Math.max(0, 1 - x * x - y * y)))];
+    drawDial();
+    refreshResets();
+    if (fx.effects.length) changeEffects(["LIGHT"], true);
+  }
+  function lightAt(e) {
+    const box = dial.getBoundingClientRect(), r = box.width / 2 - 12 + 6;
+    setLight((e.clientX - box.left - box.width / 2) / r, -(e.clientY - box.top - box.height / 2) / r);
+  }
+  dial.addEventListener("pointerdown", e => { dial.setPointerCapture(e.pointerId); dial.classList.add("dragging"); lightAt(e); });
+  dial.addEventListener("pointermove", e => { if (dial.hasPointerCapture(e.pointerId)) lightAt(e); });
+  dial.addEventListener("pointerup", () => dial.classList.remove("dragging"));
+  dial.addEventListener("dblclick", () => { if (fx.game.LIGHT) setLight(fx.game.LIGHT[0], fx.game.LIGHT[1]); });
+  dial.addEventListener("keydown", e => {
+    const [x, y] = lightNow(), r = Math.hypot(x, y), a = Math.atan2(y, x), turn = 5 * Math.PI / 180;
+    const to = { ArrowLeft: [r, a + turn], ArrowRight: [r, a - turn], ArrowUp: [Math.max(0, r - 0.05), a], ArrowDown: [r + 0.05, a] }[e.key];
+    if (!to) return;
+    e.preventDefault();
+    setLight(to[0] * Math.cos(to[1]), to[0] * Math.sin(to[1]));
+  });
+  function resetLight() {
+    const names = new Set();
+    for (const knob of Object.values(simple)) { scaleSimple(knob, 1).forEach(n => names.add(n)); knob.input.value = 100; knob.show(); }
+    if (fx.game.LIGHT) { fx.now.LIGHT = copy(fx.game.LIGHT); names.add("LIGHT"); }
+    drawDial();
+    if (names.size) changeEffects([...names], true);
+  }
+  drawDial();
+  const lightChanged = () => (!!fx.game.LIGHT && !same(lightNow(), fx.game.LIGHT)) || Object.values(simple).some(k => k.k !== 1);
+  function renderEffects() {
+    if (fx.rendering || !fx.pending.size) return;
+    const changed = [...fx.pending];
+    fx.pending.clear();
+    const groups = [...new Set(fx.effects.filter(e => changed.includes(e.name)).flatMap(e => e.groups))];
+    fx.rendering = true;
+    const what = "Rendering " + groups.map(g => fx.groups[g]).join(", ") + "…";
+    const slow = setTimeout(() => { if (fx.rendering) { fxStatus(what); showBusy(what); } }, 400);
+    const done = () => { fx.rendering = false; clearTimeout(slow); };
+    effects({ op: "render", set: fxChanged(), changed }).then(reply => {
+      done();
+      if (reply.error) { fxStatus("Couldn't render: " + reply.error); showBusy(""); return; }
+      invalidate(reply.written);
+      fxStatus("");
+      if (fx.pending.size) renderEffects(); else showBusy(""); // what changed meanwhile
+    }, e => { done(); showBusy(""); fxStatus("Couldn't render: " + e.message); });
+  }
+  function resetEffects() {
+    clearTimeout(fx.timer);
+    fx.pending.clear();
+    for (const e of fx.effects) { fx.now[e.name] = copy(fx.game[e.name]); fx.show[e.name](); }
+    for (const knob of Object.values(simple)) { knob.k = 1; knob.input.value = 100; knob.show(); }
+    effects({ op: "reset" }).then(reply => { if (reply.cleared) invalidate(reply.cleared); });
+  }
+  $("export").addEventListener("click", () => {
+    const set = fxChanged(), sloshChanged = {};
+    for (const k of order) if (slosh[k] !== game[k]) sloshChanged[k] = slosh[k];
+    if (!Object.keys(set).length && !Object.keys(sloshChanged).length) {
+      $("copied").textContent = "Nothing to export: every value is the game's.";
+      return;
+    }
+    $("copied").textContent = "Exporting" + (Object.keys(set).length ? " and regenerating the textures" : "") + "…";
+    showBusy("Exporting to the add-on" + (Object.keys(set).length ? " and regenerating its textures…" : "…"));
+    effects({ op: "export", set, slosh: sloshChanged }).then(reply => {
+      showBusy("");
+      if (reply.error) { $("copied").textContent = "Export failed: " + reply.error; return; }
+      invalidate([...(reply.written || []), ...(reply.cleared || [])]);
+      for (const e of fx.effects) { fx.game[e.name] = copy(fx.now[e.name]); fx.show[e.name](); }
+      Object.assign(game, slosh);
+      for (const key of order) sliders[key]();
+      if (Object.keys(sloshChanged).length) ask("adopt"); // Motion.lua holds them now: the game's values
+      refreshResets();
+      const parts = [];
+      const media = Object.entries(reply.changed || {}), lua = Object.entries(reply.slosh || {});
+      if (lua.length) parts.push("Motion.lua: " + lua.map(([k, [a, b]]) => `${k} ${a} → ${b}`).join(", "));
+      if (media.length) parts.push("make_media.py: " + media.map(([k, [a, b]]) => `${k} ${a} → ${b}`).join(", ") +
+        ` (${(reply.written || []).length} textures regenerated)`);
+      $("copied").textContent = "Exported. " + parts.join(". ") + ". Next: make test deploy.";
+    }, e => { showBusy(""); $("copied").textContent = "Export failed: " + e.message; });
+  });
+  effects({ op: "values" }).then(reply => {
+    if (reply.error) { fxStatus(reply.error); return; }
+    buildEffects(reply);
+  }, e => fxStatus("No glows and shadows: " + e.message));
+  hostReady.then(h => {
+    h.say = text => { if (fx.rendering) { showBusy(text); fxStatus(text); } }; // Python loading, on the public page
+    $("export").hidden = h.site; // it writes into the add-on's files: make sim only
+    $("effectsGroup").hidden = h.site; // the 25 effects one by one: for tuning the add-on
+  });
+
+  // ------------------------------------------------------------- what the character does
+  const view = $("view");
+  // The mouse as the game's: the left button looks round you (the camera orbits, you don't turn, so nothing
+  // sloshes: Motion.lua has no camera to read), the right turns you, first to where the camera looks; both run
+  // forward; up and down tilt the camera. Moving swings the camera back behind you (the game's "smart" follow).
+  let turnDx = 0, lookDx = 0, lookDy = 0, buttons = 0, snap = false, lastX = 0, lastY = 0, mapZoom = 1;
+  // the camera: degrees, the view turned right of your facing and tilted down from its rest; yards out (null: the
+  // world's own rest distance)
+  const cam = { orbit: 0, tilt: 0, zoom: null };
+  function press(e) {
+    const was = buttons;
+    buttons = e.buttons & 3; // a second button pressed or let go comes as a move, not a down or up
+    if (buttons & 2 && !(was & 2)) snap = true;
+    view.classList.toggle("looking", buttons !== 0);
+  }
+  // Fingers: one landing on the scene's left third is a joystick there (W A S D's moves: forward, back, strafing,
+  // past a third of its reach); elsewhere one turns you as the right button does (and tilts the camera); two
+  // turn the camera round you as the left button does and pinch its zoom
+  const touches = new Map(), stickView = document.createElement("div");
+  let stick = null;
+  stickView.className = "stick";
+  stickView.hidden = true;
+  stickView.innerHTML = "<i></i>";
+  view.appendChild(stickView);
+  const STICK = 56;
+  const at = e => { const r = view.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top, r.width]; };
+  function touchDown(e) {
+    const [x, y, w] = at(e);
+    const role = !stick && x < w * 0.38 ? "stick" : "look";
+    touches.set(e.pointerId, { role, x, y, down: [e.clientX, e.clientY, performance.now()] });
+    if (role === "stick") {
+      stick = { id: e.pointerId, x, y, nx: 0, ny: 0 };
+      Object.assign(stickView.style, { left: x + "px", top: y + "px" });
+      stickView.firstChild.style.transform = "";
+      stickView.hidden = false;
+    }
+    try { view.setPointerCapture(e.pointerId); } catch (err) { /* a synthetic pointer */ }
+  }
+  function touchMove(e) {
+    const t = touches.get(e.pointerId);
+    if (!t) return;
+    const [x, y] = at(e), dx = x - t.x, dy = y - t.y;
+    if (t.role === "stick") {
+      const ox = x - stick.x, oy = y - stick.y, d = Math.hypot(ox, oy), k = d > STICK ? STICK / d : 1;
+      stick.nx = ox * k / STICK;
+      stick.ny = oy * k / STICK;
+      stickView.firstChild.style.transform = `translate(${ox * k}px, ${oy * k}px)`;
+      return;
+    }
+    const looks = [...touches.values()].filter(o => o.role === "look");
+    if (looks.length >= 2) { // two fingers: the camera round you (their middle's move) and its zoom (their spread)
+      const [a, b] = looks, before = Math.hypot(a.x - b.x, a.y - b.y);
+      t.x = x; t.y = y;
+      const after = Math.hypot(a.x - b.x, a.y - b.y);
+      lookDx += dx / 2;
+      lookDy += dy / 2;
+      if (world && before > 20 && after > 20) {
+        const z = world.zoom;
+        cam.zoom = Math.max(z.min, Math.min(z.max, (cam.zoom || z.rest) * before / after));
+      }
+      return;
+    }
+    turnDx += dx; // one finger: you turn, as the right button turns you
+    lookDy += dy * 0.6;
+    t.x = x; t.y = y;
+  }
+  function touchUp(e) {
+    const t = touches.get(e.pointerId);
+    touches.delete(e.pointerId);
+    if (t && t.role === "stick") { stick = null; stickView.hidden = true; }
+    if (t && t.role !== "stick" && isClick(e.clientX, e.clientY, t.down)) clickWorld(e.clientX, e.clientY); // a tap
+  }
+  let downAt = null; // a press that comes up where it went down, quickly, is a click on the world
+  view.addEventListener("pointerdown", e => {
+    if (e.target.closest(".hudbar button, .gamewin, .touchforms, .popup")) return; // the game's own buttons and windows take their clicks
+    if (e.pointerType === "touch") { touchDown(e); return; }
+    lastX = e.clientX; lastY = e.clientY;
+    downAt = [e.clientX, e.clientY, performance.now()];
+    press(e);
+    view.setPointerCapture(e.pointerId);
+    view.focus({ preventScroll: true });
+  });
+  view.addEventListener("pointermove", e => {
+    if (e.pointerType === "touch") { touchMove(e); return; }
+    press(e);
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    if (!buttons) return;
+    if (buttons & 2) turnDx += dx; else lookDx += dx;
+    lookDy += dy;
+  });
+  const isClick = (x, y, d) => d && Math.hypot(x - d[0], y - d[1]) < 6 && performance.now() - d[2] < 400;
+  view.addEventListener("pointerup", e => {
+    if (e.pointerType === "touch") { touchUp(e); return; }
+    press(e);
+    if (isClick(e.clientX, e.clientY, downAt)) clickWorld(e.clientX, e.clientY);
+    downAt = null;
+  });
+  view.addEventListener("pointercancel", e => {
+    if (e.pointerType === "touch") { touchUp(e); return; }
+    buttons = 0;
+    view.classList.remove("looking");
+  });
+  view.addEventListener("contextmenu", e => e.preventDefault()); // the right button is the game's
+  // The wheel as the game's: it zooms the camera, in and out between the world's limits; over the minimap it
+  // zooms the map (wheeling toward you: out, in both)
+  view.addEventListener("wheel", e => {
+    e.preventDefault();
+    const k = Math.exp(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1) * 0.0015);
+    if (overMap(e)) {
+      mapZoom = Math.max(0.4, Math.min(2.5, mapZoom * k));
+      refreshResets();
+    } else if (world) {
+      const z = world.zoom;
+      cam.zoom = Math.max(z.min, Math.min(z.max, (cam.zoom || z.rest) * k));
+    }
+  }, { passive: false });
+  // which sphere the mouse is over (its OnEnter in the add-on: the values on its curve; the map: coordinates and zone)
+  let hover = "none";
+  function circleOf(files) {
+    const its = items ? items.filter(it => files.includes(it.f)) : [];
+    if (!its.length) return null;
+    const l = Math.min(...its.map(it => it.r[0])), b = Math.min(...its.map(it => it.r[1])), r = Math.max(...its.map(it => it.r[2])), t = Math.max(...its.map(it => it.r[3]));
+    return [(l + r) / 2, (b + t) / 2, Math.max(r - l, t - b) / 2];
+  }
+  function hoverAt(e) {
+    if (!items) return "none";
+    const box = canvas.getBoundingClientRect(), dpr = pixelRatio();
+    const u = ((e.clientX - box.left) * dpr - origin[0]) / ppu, v = ((box.bottom - e.clientY) * dpr - origin[1]) / ppu;
+    const inside = c => c && Math.hypot(u - c[0], v - c[1]) <= c[2];
+    if (inside(circleOf(["GlassPet", "GlassPetHealth", "GlassPetMana"]))) return "pet";
+    if (inside(circleOf(["GlassHealth", "GlassMana", "GlassWhole"]))) return "left";
+    if (inside(circleOf(["@map"]))) return "map";
+    return "none";
+  }
+  view.addEventListener("pointermove", e => { if (e.pointerType === "mouse" && !buttons) hover = hoverAt(e); });
+  view.addEventListener("pointerleave", () => { hover = "none"; });
+  // whether the pointer is over the minimap: inside the circle the map's terrain is drawn in, in HUD units
+  function overMap(e) {
+    const map = items && items.find(it => it.f === "@map");
+    if (!map) return false;
+    const box = canvas.getBoundingClientRect(), dpr = pixelRatio();
+    const u = ((e.clientX - box.left) * dpr - origin[0]) / ppu, v = ((box.bottom - e.clientY) * dpr - origin[1]) / ppu;
+    const [l, b, r, t] = map.r;
+    return Math.hypot(u - (l + r) / 2, v - (b + t) / 2) <= (r - l) / 2;
+  }
+  const keys = { left: false, right: false, fwd: false, back: false, strafeL: false, strafeR: false };
+  const KEYMAP = { arrowleft: "left", a: "left", arrowright: "right", d: "right", w: "fwd", arrowup: "fwd", s: "back",
+    arrowdown: "back", q: "strafeL", e: "strafeR" };
+  view.addEventListener("keydown", e => {
+    if (e.key === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey
+        && !e.target.closest("#menu,#popup,#gossip,input,textarea,select,[contenteditable]")) {
+      e.preventDefault();
+      if (!e.repeat) cycleTarget(e.shiftKey);
+      return;
+    }
+    const k = KEYMAP[e.key.toLowerCase()];
+    if (k) { keys[k] = true; e.preventDefault(); }
+    if (e.key === " ") { e.preventDefault(); if (!e.repeat) jump(); }
+    const digit = /^Digit([1-9])$/.exec(e.code);
+    if (digit && !e.repeat) {
+      e.preventDefault();
+      const n = Number(digit[1]);
+      if (e.shiftKey) { // a form (the form's key again: back to caster, as in game)
+        const f = FORM_KEYS[n - 1];
+        if (f) shift(pick("form") === f ? "caster" : f);
+      } else if (fight) castSlot(n); // the spell on the upper row's button
+    }
+    if (e.key.toLowerCase() === "f" && !e.repeat && life.state === "ghost") { e.preventDefault(); talk(); return; } // to the spirit healer
+    if (e.key === "Escape" && !$("gossip").hidden) { e.preventDefault(); closeGossip(); return; }
+    if (rings && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && rings.key(e)) { e.preventDefault(); return; } // C, P, B, Esc
+    if (e.key === "Escape" && fight && fight.me.cast) { fight.me.cast = null; if (world) world.event("casting", { id: null }); }
+  });
+  view.addEventListener("keyup", e => { const k = KEYMAP[e.key.toLowerCase()]; if (k) keys[k] = false; });
+  view.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
+  let clock = 0;
+  const gestures = [];
+  function turn(peak, hold, ramp) { gestures.push({ start: clock, peak, hold, ramp }); } // degrees a second, + right
+  function gestureTurn() {
+    let w = 0;
+    for (let i = gestures.length - 1; i >= 0; i--) {
+      const g = gestures[i], t = clock - g.start, end = 2 * g.ramp + g.hold;
+      if (t >= end) { gestures.splice(i, 1); continue; }
+      const k = t < g.ramp ? t / g.ramp : t > g.ramp + g.hold ? (end - t) / g.ramp : 1;
+      w += g.peak * k * k * (3 - 2 * k);
+    }
+    return w;
+  }
+  $("flickLeft").addEventListener("click", () => turn(-720, 0.22, 0.06));
+  $("flickRight").addEventListener("click", () => turn(720, 0.22, 0.06));
+  $("keyTurn").addEventListener("click", () => turn(180, 1.0, 0.03));
+  $("spin").addEventListener("click", () => turn(650, 1.5, 0.12));
+  const RUN = 5.6, BACK = 4.5; // simulator run and backpedal, yards a second; strafing at run speed
+  // A druid's forms (sim_world.js FORMS): each its power, travel form 40% faster. A form sets your class to
+  // Druid and your power; picking rage or energy shifts to bear or cat.
+  const FORM_POWER = { caster: "mana", bear: "rage", cat: "energy", travel: "mana", moonkin: "mana" };
+  const FORM_SPEED = { travel: 1.4 }, FORM_KEYS = ["caster", "bear", "cat", "travel", "moonkin"];
+  const radio = (name, value) => document.querySelector(`input[name="${name}"][value="${value}"]`);
+  function shift(form) {
+    if (fight && !fight.shift(form)) return;
+    formRadios(form);
+  }
+  function formRadios(form) {
+    radio("form", form).checked = true;
+    radio("power", FORM_POWER[form]).checked = true;
+    radio("class", "druid").checked = true;
+    refreshResets();
+  }
+  for (const input of document.querySelectorAll('input[name="form"]')) input.addEventListener("change", () => shift(input.value));
+  for (const input of document.querySelectorAll('input[name="power"]')) input.addEventListener("change", () => {
+    if (FORM_POWER[pick("form")] === input.value) return;
+    shift(input.value === "rage" ? "bear" : input.value === "energy" ? "cat" : "caster");
+  });
+  const move = { run: false, hops: [], airUntil: 0, jump: false, jumpAt: -10, regen: false, hit: "", hitSize: null };
+  $("run").addEventListener("click", () => {
+    move.run = !move.run;
+    $("run").textContent = move.run ? "Stop running" : "Start running";
+    $("run").setAttribute("aria-pressed", String(move.run));
+    refreshResets();
+  });
+  $("hopLeft").addEventListener("click", () => move.hops.push({ start: clock, dir: -1, length: 0.6 }));
+  $("hopRight").addEventListener("click", () => move.hops.push({ start: clock, dir: 1, length: 0.6 }));
+  const inAir = () => clock < move.airUntil;
+  function jump() { if (life.state !== "dead" && !inAir()) { move.jump = true; move.jumpAt = clock; move.airUntil = clock + 0.72; } }
+  $("jump").addEventListener("click", jump);
+  $("ledge").addEventListener("click", () => { if (!inAir()) move.airUntil = clock + 1.3; });
+  $("bigFall").addEventListener("click", () => { if (!inAir()) move.airUntil = clock + 2.5; });
+  $("regen").addEventListener("click", () => { move.regen = true; });
+  // a blow over 55% of the maximum: the add-on's own S.Wound decides, as UNIT_COMBAT's WOUND would
+  // the blow takes its health too, in the same frame, as in game (down to 5%: no dying here)
+  function blow(who, slider) {
+    move.hit = who;
+    const s = $(slider);
+    s.value = Math.max(5, Number(s.value) - Number($("hit").value));
+    s.dispatchEvent(new Event("input"));
+  }
+  $("hitYou").addEventListener("click", () => blow("player", "hp"));
+  $("hitPet").addEventListener("click", () => {
+    if (pick("pet") === "none") { status("No pet to hit: pick a beast or a demon first."); return; }
+    blow("pet", "php");
+  });
+
+  // where you are, for the minimap's stand-in (the Lua side's character moves the same way)
+  const me = { facing: 1, north: 84, west: 28 }; // start about 52 yards from the mapped river, in the open clearing
+  let pendingDt = 0, items = null, shownTurn = 0, ready = false, now3d = null, hudTop = 0;
+  function inputs(dt) {
+    clock += dt;
+    const step = Math.max(dt, 1e-3);
+    let turnNow = turnDx / step * 0.9; // CSS pixels a second to degrees a second
+    turnDx = 0;
+    turnNow += (keys.right ? 180 : 0) - (keys.left ? 180 : 0) + gestureTurn();
+    if (fight && fight.auto && aim.here && Math.abs(aim.angle) > 0.1) turnNow += Math.sign(aim.angle) * 180; // facing its foe, by the keys' turn
+    let snapped = 0; // the right button: you face where the camera looks, at once (the game's facing jumps)
+    if (snap) { snapped = cam.orbit; cam.orbit = 0; snap = false; }
+    snapped += life.turnJump; // a teleport's new facing
+    life.turnJump = 0;
+    if (life.state === "dead") turnNow = 0; // lying dead: no turning, no moving
+    cam.orbit = ((cam.orbit + lookDx * 0.9 + 540) % 360) - 180;
+    cam.tilt = Math.max(-24, Math.min(59, cam.tilt + lookDy * 0.5));
+    lookDx = lookDy = 0;
+    const sx = stick ? stick.nx : 0, sy = stick ? stick.ny : 0; // the joystick, as the keys
+    let lat = (keys.strafeR || sx > 0.35 ? RUN : 0) - (keys.strafeL || sx < -0.35 ? RUN : 0);
+    for (let i = move.hops.length - 1; i >= 0; i--) {
+      const h = move.hops[i];
+      if (clock - h.start >= h.length) move.hops.splice(i, 1); else lat += h.dir * RUN;
+    }
+    const fast = (FORM_SPEED[pick("form")] || 1) * (life.state === "ghost" ? WISP : 1) * (life.state === "dead" ? 0 : 1);
+    lat = Math.max(-RUN, Math.min(RUN, lat)) * fast;
+    const wantFwd = (move.run || keys.fwd || buttons === 3 || sy < -0.35 ? RUN : keys.back || sy > 0.35 ? -BACK : 0) * fast;
+    if ((wantFwd || lat) && !(buttons & 1)) cam.orbit *= Math.exp(-dt / 0.45); // moving: the camera swings back behind you
+    me.facing = (me.facing - (turnNow * dt + snapped) * Math.PI / 180) % (2 * Math.PI);
+    // the move, then out of anything solid in the 3D world (you slide along it); what you really moved is what
+    // the Lua side is told, as UnitPosition would tell the add-on
+    const c = Math.cos(me.facing), sn = Math.sin(me.facing);
+    let north = me.north + (wantFwd * c + lat * sn) * dt, west = me.west + (wantFwd * sn - lat * c) * dt;
+    if (world) [north, west] = world.collide(north, west, pick("form"));
+    const dN = north - me.north, dW = west - me.west;
+    me.north = north;
+    me.west = west;
+    const fwd = (dN * c + dW * sn) / step;
+    lat = (dN * sn - dW * c) / step;
+    shownTurn += (turnNow - shownTurn) * (1 - Math.exp(-dt / 0.05));
+    const a = Math.abs(shownTurn), fill = $("meterFill");
+    fill.style.transform = `scaleX(${Math.min(1, a / METER_MAX)})`;
+    fill.classList.toggle("hot", a > slosh.threshold);
+    $("turnNow").textContent = Math.round(a) + "°/s";
+    $("speedNow").textContent = Math.hypot(fwd, lat).toFixed(1) + " yd/s";
+    $("airNow").textContent = inAir() ? "in the air" : "on the ground";
+    return { turnNow: turnNow + snapped / step, fwd, lat, moving: Math.hypot(fwd, lat) > 0.3 || inAir() }; // the Lua side is told the jump as a turn
+  }
+  function sendFrame(state) {
+    if (!ready) return;
+    const dt = Math.min(0.1, pendingDt);
+    pendingDt = 0;
+    const q = { dt: dt.toFixed(4), turn: state.turnNow.toFixed(2), fwd: state.fwd, lat: state.lat, air: inAir() ? 1 : 0,
+      jump: move.jump ? 1 : 0, hp: ($("hp").value / 100).toFixed(4), pp: ($("pp").value / 100).toFixed(4), power: pick("power"),
+      pet: pick("pet"), php: ($("php").value / 100).toFixed(4), pmp: ($("pmp").value / 100).toFixed(4), regen: move.regen ? 1 : 0,
+      statues: pick("statues"), xp: ($("xp").value / 100).toFixed(4), rested: ($("rested").value / 100).toFixed(4),
+      resting: $("resting").checked ? 1 : 0, class: pick("class"), level: $("level").value,
+      // its card on its nameplate instead (the page's); a corpse you targeted, at the top (Target.lua's card: the sphere here)
+      target: !targeted ? "none" : pick("tstyle") === "nameplate" && !targetedDead ? "none" : pick("target"),
+      targetNpc: targeted && selectedNpc ? selectedNpc.id : "none",
+      targetName: targeted && selectedNpc ? selectedNpc.name.replaceAll(" ", "_") : "",
+      targetLevel: targeted && selectedNpc ? 12 : 30, targetReaction: targeted && selectedNpc ? selectedNpc.reaction : "",
+      thp: ($("thp").value / 100).toFixed(4), tpp: ($("tpp").value / 100).toFixed(4), tpower: pick("tpower"),
+      top: (H / ppu).toFixed(1), // the screen's top, units over its bottom: the target card hangs from it
+      life: life.state, view: viewRadius().toFixed(1), hover, always: $("valuesAlways").checked ? 1 : 0,
+      combat: fight && fight.mob.alive && fight.mob.aggro && life.state === "alive" ? 1 : 0 };
+    if (life.state === "ghost") q.corpse = life.corpse.map(v => v.toFixed(2)).join(",");
+    if (life.tp) { q.at = life.tp.map(v => v.toFixed(2)).join(","); life.tp = null; }
+    if (move.hit) Object.assign(q, { hit: move.hit, size: (move.hitSize ?? $("hit").value / 100).toFixed(2), hidden: $("hidden").checked ? 1 : 0 });
+    move.jump = false; move.regen = false; move.hit = ""; move.hitSize = null;
+    const reply = ask("frame " + Object.entries(q).map(([k, v]) => k + "=" + v).join(" "));
+    if (reply.error) { status("Lua: " + reply.error); return; }
+    items = reply.items;
+    if (askGameUI && fight) {
+      const form = fight.me.form, ids = BARS[form] || [];
+      const target = targeted ? pick("target") : "none";
+      const names = { hostile: "Gnarlpine Warrior", tapped: "Gnarlpine Warrior", neutral: "Nightsaber", friendly: "Darnassian Sentinel" };
+      const state = { op: "update", form, hp: Number($("hp").value), power: Number($("pp").value), powerType: pick("power"),
+        target, targetName: selectedNpc && targeted ? selectedNpc.name : names[target] || "", thp: Number($("thp").value) / 100, tpp: Number($("tpp").value) / 100,
+        targetPower: pick("tpower"), level: Number($("level").value), statues: pick("statues"),
+        ...Object.fromEntries(Array.from({ length: 6 }, (_, i) => ["s" + (i + 1), ids[i] || ""])) };
+      gameUIState = askGameUI(Object.entries(state).map(([k, v]) => k + "=" + encodeURIComponent(String(v))).join(" ").replace(/%20/g, "_"));
+      if (gameUIState.error) { broken = "Game UI Lua: " + gameUIState.error; }
+      else if (bar) {
+        bar.update(fight, { ...aim, moving }, gameUIState);
+        rings && rings.update(gameUIState, form);
+        if (!gameUILayoutApplied && ringGeo) {
+          const dpr = pixelRatio();
+          bar.layout(origin, ppu, dpr);
+          if (rings) rings.layout(origin, ppu, dpr, W, H, ringGeo, frameTop);
+          gameUILayoutApplied = true;
+        }
+      }
+    }
+    if (reply.frameTop) frameTop = reply.frameTop;
+    if (ringGeo && reply.orbX !== undefined) ringGeo.orb[0] = reply.orbX;
+    // the HUD's drawn top, over the screen's bottom (units): the highest texture of the bottom's art (the target's
+    // sphere hangs from the screen's top: not counted); the controls stay above it
+    let top = 0;
+    for (const it of items) if (it.r[3] < 330 && it.r[3] > top) top = it.r[3];
+    if (Math.abs(top - hudTop) > 1) { hudTop = top; placeMenu(); }
+    const extra = items.some(it => it.m.length > 2) ? " A texture has more than two masks: only two are drawn." : "";
+    status([broken, (reply.unknown && reply.unknown.length ? "Not drawn (not in Spheres/Media): " + reply.unknown.join(", ") + "." : "") + extra]
+      .filter(Boolean).join(" "));
+  }
+
+  // ------------------------------------------------------------- WebGL: the items as the game draws textures
+  const canvas = $("gl");
+  // see-through where nothing is drawn, premultiplied: the 3D world's canvas shows under it, and the HUD's
+  // added light (ADD) lands on the world as the game's does
+  const gl = canvas.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: true });
+  function fail(text) {
+    $("loading").hidden = true;
+    const d = document.createElement("div");
+    d.className = "error";
+    d.textContent = text;
+    view.appendChild(d);
+  }
+  if (!gl) { fail("This browser can't draw WebGL, which the simulator needs."); return; }
+  if (location.protocol === "file:") { fail("Open it through `make sim` (from the repo root): the page loads Spheres' files from there."); return; }
+  const VS = `
+    attribute vec2 aPos; attribute vec2 aUV;
+    uniform vec2 uOrigin; uniform float uPPU; uniform vec2 uRes;
+    varying vec2 vUV; varying vec2 vPos;
+    void main() {
+      vUV = aUV; vPos = aPos;
+      vec2 px = uOrigin + aPos * uPPU;
+      gl_Position = vec4(px / uRes * 2.0 - 1.0, 0.0, 1.0);
+    }`;
+  const FS = `
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
+    precision mediump float;
+    #endif
+    varying vec2 vUV; varying vec2 vPos;
+    uniform sampler2D uTex; uniform sampler2D uMask; uniform sampler2D uMask2;
+    uniform vec4 uTint; uniform float uMasks; uniform vec4 uMaskBox; uniform vec4 uMaskBox2;
+    uniform float uUseClip; uniform vec4 uClip;
+    float maskAt(sampler2D m, vec4 box) {
+      vec2 p = vec2((vPos.x - box.x) / box.z, (box.y - vPos.y) / box.w);
+      if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) return 0.0; // CLAMPTOBLACKADDITIVE past its edges
+      return texture2D(m, p).a;
+    }
+    void main() {
+      if (uUseClip > 0.5 && (vPos.x < uClip.x || vPos.y < uClip.y || vPos.x > uClip.z || vPos.y > uClip.w)) discard;
+      vec4 t = texture2D(uTex, vUV);
+      float a = t.a * uTint.a;
+      if (uMasks > 0.5) a *= maskAt(uMask, uMaskBox);
+      if (uMasks > 1.5) a *= maskAt(uMask2, uMaskBox2);
+      gl_FragColor = vec4(t.rgb * uTint.rgb, a);
+    }`;
+  function shader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { fail("The drawing code didn't start: " + gl.getProgramInfoLog(prog)); return; }
+  gl.useProgram(prog);
+  const U = {};
+  for (const n of ["uOrigin", "uPPU", "uRes", "uTex", "uMask", "uMask2", "uTint", "uMasks", "uMaskBox", "uMaskBox2",
+    "uUseClip", "uClip"]) U[n] = gl.getUniformLocation(prog, n);
+  gl.uniform1i(U.uTex, 0);
+  gl.uniform1i(U.uMask, 1);
+  gl.uniform1i(U.uMask2, 2);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, 64, gl.DYNAMIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, "aPos"), aUV = gl.getAttribLocation(prog, "aUV");
+  gl.enableVertexAttribArray(aPos);
+  gl.enableVertexAttribArray(aUV);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+  gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 16, 8);
+  gl.enable(gl.BLEND);
+  const quad = new Float32Array(16);
+
+  // The add-on's TGAs: uncompressed (make_media.py) or run-length (Roth's), 24 or 32 bits, either origin.
+  const pow2 = n => (n & (n - 1)) === 0;
+  // bilinear, no mipmaps: as the game draws its UI's textures (with mipmaps a strip squashed as
+  // much as the inner sphere's surface broke into floating blocks here)
+  function upload(img, rh, rv, mirror) {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    if (img.data) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, img.w, img.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, img.data);
+    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img.source);
+    const tiles = pow2(img.w) && pow2(img.h); // WebGL 1 repeats only power-of-two textures (the add-on's are)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, rh && tiles ? (mirror ? gl.MIRRORED_REPEAT : gl.REPEAT) : gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, rv && tiles ? (mirror ? gl.MIRRORED_REPEAT : gl.REPEAT) : gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    return t;
+  }
+  // a texture by its Spheres/Media name and wrap, loaded the first time an item asks for it
+  const images = {}, textures = {}, versions = {};
+  // PNG conversions of the game's Interface/Minimap/MinimapArrow and MiniMap-QuestArrow textures.
+  function loadMinimapIcon(file, path) {
+    const icon = new Image();
+    images[file] = null;
+    loading.asked.add(file);
+    icon.onload = () => {
+      images[file] = { w: icon.width, h: icon.height, source: icon };
+      loading.got.add(file);
+    };
+    icon.onerror = () => loadFailed("Couldn't load " + path);
+    icon.src = path;
+  }
+  loadMinimapIcon("@playerarrow", "./minimap_player.png");
+  loadMinimapIcon("@questarrow", "./minimap_quest_arrow.png");
+  // a texture re-rendered (a preview, an export): fetched again next time it's drawn
+  function invalidate(names) {
+    for (const name of names) {
+      versions[name] = (versions[name] || 0) + 1;
+      delete images[name];
+      for (const key of Object.keys(textures)) {
+        if (key.startsWith(name + "|")) { gl.deleteTexture(textures[key]); delete textures[key]; }
+      }
+    }
+  }
+  const tries = {};
+  function textureFor(file, rh, rv) {
+    const key = file + (rh ? "|r" : "|c") + (rv ? "r" : "c");
+    if (textures[key]) return textures[key];
+    if (file === "WHITE") images.WHITE = images.WHITE || { w: 1, h: 1, data: new Uint8Array([255, 255, 255, 255]) };
+    if (file === "@map") images["@map"] = images["@map"] || terrain();
+    if (file === "@interior") images[file] = images[file] || interiorMap();
+    if (file === "@deadarrow") images[file] = images[file] || arrowImage("#8e0d06", "#ff5a42");
+    if (file === "@corpse") images[file] = images[file] || corpseMark();
+    if (file === "@combat") images[file] = images[file] || combatIcon();
+    if (file === "@rest") images[file] = images[file] || restIcon();
+    if (file.startsWith("@avatar-")) images[file] = images[file] || targetAvatar(file.slice(8));
+    const img = images[file];
+    if (img === undefined && host) {
+      images[file] = null;
+      loading.asked.add(file);
+      host.image(file, versions[file] || 0).then(decoded => { images[file] = decoded; delete tries[file]; loading.got.add(file); }, e => {
+          // a dropped download (many at once) is asked for again, a few times
+          tries[file] = (tries[file] || 0) + 1;
+          if (tries[file] < 5) setTimeout(() => { if (images[file] === null) delete images[file]; }, 300 * tries[file]);
+          else { status("Couldn't load " + e.message); loadFailed("Couldn't load " + e.message); }
+        });
+      return null;
+    }
+    if (!img) return null;
+    textures[key] = upload(img, rh, rv, file === "@map" && !ownMap);
+    return textures[key];
+  }
+  // The minimap's terrain, a stand-in: grass, forest, dirt roads and water, tiling (value noise on a
+  // wrapped grid), or the picture you load.
+  function terrain() {
+    const N = 512, c = document.createElement("canvas");
+    c.width = c.height = N;
+    const g = c.getContext("2d"), img = g.createImageData(N, N);
+    const lattice = (seed, n) => { const a = []; let s = seed; for (let i = 0; i < n * n; i++) { s = (s * 16807) % 2147483647; a.push(s / 2147483647); } return a; };
+    function noise(x, y, n, grid) {
+      const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+      const at = (i, j) => grid[((j % n + n) % n) * n + ((i % n + n) % n)];
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const a = at(xi, yi) + (at(xi + 1, yi) - at(xi, yi)) * sx, b = at(xi, yi + 1) + (at(xi + 1, yi + 1) - at(xi, yi + 1)) * sx;
+      return a + (b - a) * sy;
+    }
+    const grids = [4, 8, 16, 32].map((n, i) => ({ n, g: lattice(7 + i * 101, n) }));
+    const wet = lattice(999, 8);
+    const fbm = (u, v) => grids.reduce((sum, { n, g }, i) => sum + noise(u * n, v * n, n, g) / (1 << i), 0) / 1.875;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const u = x / N, v = y / N, h = fbm(u, v), m = noise(u * 8, v * 8, 8, wet);
+      const road = Math.abs(Math.sin((u + 0.08 * Math.sin(v * 6.283 * 2)) * 6.283 * 2)) < 0.035
+        || Math.abs(Math.sin((v + 0.06 * Math.sin(u * 6.283 * 3)) * 6.283 * 1)) < 0.025;
+      let col;
+      if (h < 0.36) col = [40, 72, 98];
+      else if (h < 0.39) col = [150, 140, 100];
+      else if (road) col = [128, 104, 70];
+      else if (m > 0.6) col = [44, 70, 34];
+      else col = [78 + 40 * (h - 0.4), 104 + 30 * m, 52];
+      const shade = 0.85 + 0.3 * (h - 0.5);
+      const o = (y * N + x) * 4;
+      img.data[o] = col[0] * shade; img.data[o + 1] = col[1] * shade; img.data[o + 2] = col[2] * shade; img.data[o + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return { w: N, h: N, source: c };
+  }
+  function interiorMap() {
+    const N = 512, c = document.createElement("canvas");
+    c.width = c.height = N;
+    const g = c.getContext("2d");
+    g.fillStyle = "#000000";
+    g.fillRect(0, 0, N, N);
+    const left = 102, top = 128, width = 308, height = 256, wall = 14;
+    g.fillStyle = "#554d3e";
+    g.fillRect(left, top, width, height);
+    g.fillStyle = "#786a50";
+    g.fillRect(left + wall, top + wall, width - wall * 2, height - wall * 2);
+    // plank seams and a worn central rug, matching the small timber room in the 3D scene
+    g.strokeStyle = "rgba(40,36,33,0.28)"; g.lineWidth = 2;
+    for (let y = top + 24; y < top + height - wall; y += 22) {
+      g.beginPath(); g.moveTo(left + wall + 2, y); g.lineTo(left + width - wall - 2, y); g.stroke();
+    }
+    g.fillStyle = "#71644c";
+    g.fillRect(left + 104, top + 91, 104, 76);
+    g.strokeStyle = "#a88b5e"; g.lineWidth = 4; g.strokeRect(left + 104, top + 91, 104, 76);
+    // bed at the northwest wall
+    g.fillStyle = "#3a3639"; g.fillRect(left + 24, top + 38, 74, 46);
+    g.fillStyle = "#874c61"; g.fillRect(left + 30, top + 44, 62, 33);
+    g.fillStyle = "#d0c4a1"; g.fillRect(left + 33, top + 47, 19, 13);
+    // table, hearth and the entry gap on the south wall
+    g.fillStyle = "#453a31"; g.fillRect(left + 203, top + 104, 55, 42);
+    g.fillStyle = "#aa8152"; g.fillRect(left + 209, top + 110, 43, 30);
+    g.fillStyle = "#40343a"; g.fillRect(left + 116, top + 20, 54, 35);
+    g.fillStyle = "#efb45d"; g.beginPath(); g.arc(left + 143, top + 37, 10, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "#312d32"; g.lineWidth = wall; g.strokeRect(left, top, width, height);
+    g.strokeStyle = "#ae9568"; g.lineWidth = 5;
+    g.beginPath(); g.moveTo(left + width / 2 - 45, top + height); g.lineTo(left + width / 2 + 45, top + height); g.stroke();
+    g.strokeStyle = "#d5be8b"; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(left + width / 2 - 45, top + height - 5); g.lineTo(left + width / 2 + 45, top + height - 5); g.stroke();
+    return { w: N, h: N, source: c };
+  }
+  let ownMap = false;
+  function dropMapTextures() {
+    for (const key of Object.keys(textures)) if (key.startsWith("@map|")) { gl.deleteTexture(textures[key]); delete textures[key]; }
+  }
+  const illustratedMap = new Image();
+  illustratedMap.onload = () => {
+    if (!ownMap) { images["@map"] = { w: illustratedMap.width, h: illustratedMap.height, source: illustratedMap }; dropMapTextures(); }
+  };
+  illustratedMap.src = "./minimap_forest.webp";
+  function standInMap() { // back to the stand-in terrain
+    images["@map"] = illustratedMap.complete && illustratedMap.naturalWidth
+      ? { w: illustratedMap.width, h: illustratedMap.height, source: illustratedMap } : terrain();
+    dropMapTextures();
+    ownMap = false;
+    $("mapFile").value = "";
+  }
+  $("mapFile").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const pic = new Image();
+    pic.onload = () => {
+      const side = Math.min(pic.width, pic.height), N = 512, c = document.createElement("canvas");
+      c.width = c.height = N;
+      c.getContext("2d").drawImage(pic, (pic.width - side) / 2, (pic.height - side) / 2, side, side, 0, 0, N, N);
+      images["@map"] = { w: N, h: N, source: c };
+      dropMapTextures();
+      ownMap = true;
+      refreshResets();
+      URL.revokeObjectURL(pic.src);
+    };
+    pic.src = URL.createObjectURL(file);
+  });
+
+  // the HUD as the game places it: on the screen's bottom edge (y 0), centred; the game's size, or as
+  // large as the view takes, never wider than it (the game shrinks the HUD to the screen too)
+  // The world (sim_world.js, three.js): you, your pet and your target in it, turned and moved as you are,
+  // rendered at the view's size into its own canvas under the HUD's (see-through there: copying it in stalled
+  // the GPU)
+  let world = null, worldW = 0, worldH = 0;
+  import("./sim_world.js").then(m => {
+    world = m.createWorld();
+    view.insertBefore(world.canvas, canvas);
+    view.insertBefore(world.veil, canvas);
+    loading.world = true;
+  }, e => { broken = "The world didn't load: " + e.message; status(broken); loading.world = true; }); // the HUD still shows
+
+  let W = 1, H = 1, ppu = 1, origin = [0, 0], bounds = [-483, 0, 483, 250];
+  function resize() {
+    const dpr = pixelRatio();
+    const w = Math.max(1, Math.round(canvas.clientWidth * dpr)), h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    W = w; H = h;
+    const bw = bounds[2] - bounds[0], bh = bounds[3] - bounds[1];
+    const fit = Math.min(W * 0.98 / bw, H * 0.92 / bh);
+    ppu = $("sizeLarge").checked ? fit : Math.min(GAME_PX_PER_UNIT, fit);
+    origin = [W / 2 - (bounds[0] + bounds[2]) / 2 * ppu, -bounds[1] * ppu];
+    gl.viewport(0, 0, W, H);
+    const where = origin.join() + ppu + dpr + frameTop + !!ringGeo;
+    if (where !== barAt) {
+      if (bar) bar.layout(origin, ppu, dpr);
+      if (rings) rings.layout(origin, ppu, dpr, W, H, ringGeo, frameTop);
+      placeMenu(); // the HUD's size changed: the window stays above it
+      barAt = where;
+    }
+  }
+  function bindMask(unit, uniform, m) {
+    gl.activeTexture(unit === 1 ? gl.TEXTURE1 : gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, textureFor(m.f, false, false));
+    const [ml, mb, mr, mt] = m.r;
+    gl.uniform4f(uniform, ml, mt, mr - ml, mt - mb);
+  }
+  function drawItem(it) {
+    const map = it.f === "@map";
+    const inside = map && world?.inside?.();
+    const t = textureFor(inside ? "@interior" : it.f, inside ? false : it.rh || map, inside ? false : it.rv || map);
+    if (!t || it.m.slice(0, 2).some(m => !textureFor(m.f, false, false))) return;
+    const [l, b, r, top] = it.r;
+    let uv = it.uv;
+    if (map) { // north up: the terrain moves under the player as they walk, at the game's zoom
+      const indoor = inside && world.interiorMapPosition();
+      const span = ownMap ? MAP_YARDS : MAP_SPAN;
+      const k = indoor ? mapZoom : mapZoom * MAP_YARDS / span;
+      const du = indoor ? indoor.x / indoor.span : -me.west / span;
+      const dv = indoor ? indoor.z / indoor.span : -me.north / span;
+      uv = uv.map((x, i) => (x - 0.5) * k + 0.5 + (i % 2 ? dv : du));
+    }
+    quad.set([l, top, uv[0], uv[1], l, b, uv[2], uv[3], r, top, uv[4], uv[5], r, b, uv[6], uv[7]]);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, quad);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.uniform4f(U.uTint, it.c[0], it.c[1], it.c[2], it.a);
+    const masks = Math.min(2, it.m.length);
+    gl.uniform1f(U.uMasks, masks);
+    if (masks > 0) bindMask(1, U.uMaskBox, it.m[0]);
+    if (masks > 1) bindMask(2, U.uMaskBox2, it.m[1]);
+    if (it.k) { gl.uniform1f(U.uUseClip, 1); gl.uniform4f(U.uClip, it.k[0], it.k[1], it.k[2], it.k[3]); }
+    else gl.uniform1f(U.uUseClip, 0);
+    if (it.add) gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE, gl.ZERO, gl.ONE); // light: no cover of its own
+    else gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  // The add-on's text (the bridge's FontStrings: the values on the spheres' curves, the coordinates, the zone name
+  // glyph by glyph): each string drawn once into a texture (a stand-in for Friz Quadrata), then as a quad at its box,
+  // turned as the client turns text: about a point TURN_LIFT (3.7 units) over its middle (Sphere.lua TURN_LIFT, measured)
+  const TURN_LIFT = 3.7, words = new Map();
+  function wordTexture(it) {
+    const px = it.size * ppu, key = [it.t, px.toFixed(1), it.c.join(","), it.outline, it.sh ? it.sh[0].join(",") : ""].join("|");
+    let w = words.get(key);
+    if (w) return w;
+    // a little heavier than Marcellus' own (Friz Quadrata's strokes are thicker): the browser's synthetic weight
+    const c = document.createElement("canvas"), g = c.getContext("2d"), font = `600 ${px}px Marcellus, "Palatino Linotype", Georgia, serif`;
+    g.font = font;
+    const pad = Math.ceil(px * 0.2) + 2, width = Math.ceil(g.measureText(it.t).width);
+    c.width = width + 2 * pad;
+    c.height = Math.ceil(px * 1.35) + 2 * pad;
+    g.font = font;
+    g.textBaseline = "middle";
+    const rgb = a => `rgba(${Math.round(a[0] * 255)},${Math.round(a[1] * 255)},${Math.round(a[2] * 255)},${a[3] ?? 1})`;
+    if (it.sh) g.fillStyle = rgb(it.sh[0]), g.fillText(it.t, pad + it.sh[1][0] * ppu, c.height / 2 - it.sh[1][1] * ppu);
+    if (it.outline) { // the game's OUTLINE: a thin dark line round each letter, about a screen pixel (a wide one hid the
+      g.lineJoin = "round"; // grey maximum's thin strokes: "too dark")
+      g.lineWidth = Math.min(px * 0.22, 2 * pixelRatio());
+      g.strokeStyle = "rgba(0,0,0,0.85)";
+      g.strokeText(it.t, pad, c.height / 2);
+    }
+    g.fillStyle = g.strokeStyle = rgb(it.c);
+    g.lineWidth = px * 0.075; // the letters thickened in their own colour: Friz Quadrata's strokes, not Marcellus' thin ones
+    g.strokeText(it.t, pad, c.height / 2);
+    g.fillText(it.t, pad, c.height / 2);
+    if (words.size > 400) { for (const v of words.values()) gl.deleteTexture(v.tex); words.clear(); }
+    w = { tex: upload({ w: c.width, h: c.height, source: c }, false, false), w: c.width / ppu, h: c.height / ppu, pad: pad / ppu, text: width / ppu };
+    words.set(key, w);
+    return w;
+  }
+  function drawText(it) {
+    const w = wordTexture(it), [l, b, r, t] = it.r, cy = (b + t) / 2;
+    const cx = it.jh === "LEFT" ? l + w.text / 2 : it.jh === "RIGHT" ? r - w.text / 2 : (l + r) / 2;
+    const c = Math.cos(it.rot), s = Math.sin(it.rot), px = cx, py = cy + TURN_LIFT; // the pivot
+    const at = (dx, dy) => { const x = cx + dx - px, y = cy + dy - py; return [px + x * c - y * s, py + x * s + y * c]; };
+    const [x0, y0] = at(-w.w / 2, w.h / 2), [x1, y1] = at(-w.w / 2, -w.h / 2), [x2, y2] = at(w.w / 2, w.h / 2), [x3, y3] = at(w.w / 2, -w.h / 2);
+    quad.set([x0, y0, 0, 0, x1, y1, 0, 1, x2, y2, 1, 0, x3, y3, 1, 1]);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, quad);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, w.tex);
+    gl.uniform4f(U.uTint, 1, 1, 1, it.a);
+    gl.uniform1f(U.uMasks, 0);
+    gl.uniform1f(U.uUseClip, 0);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  function draw() {
+    resize();
+    gl.uniform2f(U.uOrigin, origin[0], origin[1]);
+    gl.uniform1f(U.uPPU, ppu);
+    gl.uniform2f(U.uRes, W, H);
+    if (world && now3d) { // the world first, under the HUD's see-through canvas
+      if (worldW !== W || worldH !== H) { world.resize(W, H); worldW = W; worldH = H; }
+      world.render(now3d);
+    }
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    if (items) for (const it of items) {
+      if (it.t !== undefined) { drawText(it); continue; }
+      drawItem(it);
+      if (it.f === "@map") drawMapMarks(it);
+    }
+  }
+
+  // ------------------------------------------------------------- the panel: groups that fold, and resets
+  // Each group folds under its heading (open or not remembered in this browser; You open at first). Its
+  // Reset shows while any of its knobs is off its starting value: the page's own (the HTML's) for its
+  // knobs, the game's for the slosh and the glows; Reset all also puts the camera back behind you.
+  const FOLDS_KEY = "spheres-sim-folds";
+  let folds = {};
+  try { folds = JSON.parse(localStorage.getItem(FOLDS_KEY) || "{}") || {}; } catch (e) { folds = {}; }
+  const keepFolds = () => { try { localStorage.setItem(FOLDS_KEY, JSON.stringify(folds)); } catch (e) { /* not kept */ } };
+  const knobs = root => [...root.querySelectorAll('input[type="radio"], input[type="checkbox"], input[type="range"]')];
+  const offStart = i => (i.type === "range" ? i.value !== i.defaultValue : i.checked !== i.defaultChecked);
+  function startKnobs(root) {
+    for (const i of knobs(root)) {
+      if (i.type !== "range") i.checked = i.defaultChecked; // read each frame: no change events (a form's would cascade)
+      else if (i.value !== i.defaultValue) { i.value = i.defaultValue; i.dispatchEvent(new Event("input")); }
+    }
+  }
+  const SPECIAL = { // groups whose starting values aren't (only) their knobs' own
+    moving: { changed: () => move.run, reset: () => { if (move.run) $("run").click(); } },
+    slosh: { changed: () => order.some(k => slosh[k] !== game[k]), reset: resetSlosh },
+    light: { changed: lightChanged, reset: resetLight },
+    advanced: { changed: () => Object.keys(fxChanged()).length > 0, reset: resetEffects },
+    view: {
+      changed: body => knobs(body).some(offStart) || mapZoom !== 1 || ownMap,
+      reset: body => { startKnobs(body); mapZoom = 1; standInMap(); },
+    },
+  };
+  for (const box of document.querySelectorAll("#menu .group")) {
+    const head = box.querySelector(":scope > h2"), key = head.textContent.trim().split(/\s+/)[0].toLowerCase();
+    const body = document.createElement("div"), fold = document.createElement("button"), reset = document.createElement("button");
+    body.className = "fold-body";
+    body.id = "fold-" + key;
+    while (head.nextSibling) body.appendChild(head.nextSibling);
+    box.appendChild(body);
+    fold.type = reset.type = "button";
+    fold.className = "fold";
+    fold.setAttribute("aria-controls", body.id);
+    // its title, what's in brackets under it, smaller: "Slosh (Motion.lua SLOSH)"
+    const [, name, aside] = head.textContent.trim().match(/^([^(]*?)\s*(?:\((.*)\))?$/);
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = name;
+    if (aside) {
+      const note = document.createElement("span");
+      note.className = "sub";
+      note.textContent = aside;
+      title.append(note);
+    }
+    head.textContent = "";
+    fold.append(title);
+    reset.className = "reset";
+    reset.textContent = "Reset";
+    reset.title = "Back to the starting values";
+    reset.setAttribute("aria-label", "Reset " + name + " to its starting values");
+    head.className = "head";
+    head.append(fold, reset);
+    const special = SPECIAL[key] || {};
+    const open = on => { fold.setAttribute("aria-expanded", String(on)); body.hidden = !on; };
+    const g = {
+      key,
+      box,
+      open,
+      changed: () => (special.changed ? special.changed(body) : knobs(body).some(offStart)),
+      restart: () => (special.reset ? special.reset(body) : startKnobs(body)),
+      reset,
+    };
+    open(key in folds ? folds[key] : ["fight", "target", "you", "moving", "frame", "view", "light", "keep"].includes(key));
+    fold.addEventListener("click", () => { folds[key] = body.hidden; open(folds[key]); keepFolds(); });
+    reset.addEventListener("click", () => { g.restart(); refreshResets(); });
+    groups.push(g);
+  }
+  const panel = $("menu");
+  panel.addEventListener("input", refreshResets);
+  panel.addEventListener("change", refreshResets);
+  function openAll(on) { // the shown tab's groups
+    for (const g of groups) if (!g.box.closest(".pane").hidden) { g.open(on); folds[g.key] = on; }
+    keepFolds();
+  }
+  $("openAll").addEventListener("click", () => openAll(true));
+  $("closeAll").addEventListener("click", () => openAll(false));
+  $("resetAll").addEventListener("click", () => {
+    comeBack(null);
+    if (fight) { fight.auto = false; fight.adopt(""); autoButton(); }
+    groups.forEach(g => g.restart());
+    cam.orbit = cam.tilt = 0;
+    cam.zoom = null;
+    refreshResets();
+  });
+  refreshResets();
+
+  // ------------------------------------------------------------- the window: its tab, minimized or not and where it
+  // stands are remembered in this browser; it keeps inside the scene and above the HUD
+  const MENU_KEY = "spheres-sim-menu", menu = $("menu"), tabs = [...menu.querySelectorAll('[role="tab"]')];
+  let menuState = {};
+  try { menuState = JSON.parse(localStorage.getItem(MENU_KEY) || "{}") || {}; } catch (e) { menuState = {}; }
+  const keepMenu = () => { try { localStorage.setItem(MENU_KEY, JSON.stringify(menuState)); } catch (e) { /* not kept */ } };
+  function showTab(name) {
+    for (const t of tabs) {
+      const on = t.id === "tab-" + name;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      $(t.getAttribute("aria-controls")).hidden = !on;
+    }
+    menuState.tab = name;
+    keepMenu();
+  }
+  tabs.forEach(t => t.addEventListener("click", () => showTab(t.id.slice(4))));
+  menu.querySelector('[role="tablist"]').addEventListener("keydown", e => { // arrows between the tabs
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const at = tabs.findIndex(t => t.getAttribute("aria-selected") === "true");
+    const next = tabs[(at + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+    showTab(next.id.slice(4));
+    next.focus();
+  });
+  function foldMenu(on) { // minimized: its title bar alone
+    menu.classList.toggle("folded", on);
+    $("menuFold").setAttribute("aria-expanded", String(!on));
+    $("menuFold").innerHTML = on ? "+" : "&#8211;";
+    $("menuFold").setAttribute("aria-label", (on ? "Restore" : "Minimize") + " the controls (O)");
+    $("menuFold").title = (on ? "Restore" : "Minimize") + " (O)";
+    menuState.folded = on;
+    keepMenu();
+    placeMenu();
+  }
+  // inside the scene, its bottom above the HUD's top (bounds: the HUD's box in units, its top over the screen's edge)
+  function placeMenu() {
+    if (getComputedStyle(menu).position !== "absolute") return;
+    // its top stays where it was put; its height takes the room down to the HUD (at least 160 open, a title bar
+    // minimized), its top moving up only when there isn't that much
+    const stage = menu.parentElement, sw = stage.clientWidth, sh = stage.clientHeight, w = menu.offsetWidth;
+    const room = sh - (hudTop || bounds[3]) * ppu / pixelRatio() - 12;
+    const least = menu.classList.contains("folded") ? $("menuBar").offsetHeight + 2 : 160;
+    const y = Math.max(8, Math.min(menuState.y ?? 12, room - least));
+    menu.style.maxHeight = Math.max(least, room - y) + "px";
+    const x = Math.min(Math.max(8, menuState.x ?? sw - w - 12), Math.max(8, sw - w - 8));
+    Object.assign(menu.style, { left: x + "px", top: y + "px", right: "auto" });
+    moreBelow();
+  }
+  // a fade at its foot while there's more to scroll to
+  function moreBelow() {
+    const body = $("menuBody");
+    menu.classList.toggle("more", body.scrollTop + body.clientHeight < body.scrollHeight - 4);
+  }
+  $("menuBody").addEventListener("scroll", moreBelow);
+  for (const t of tabs) t.addEventListener("click", moreBelow);
+  new ResizeObserver(moreBelow).observe($("menuBody"));
+  $("menuBar").addEventListener("pointerdown", e => { // dragged by its title bar
+    if (e.target.closest("button") || getComputedStyle(menu).position !== "absolute") return;
+    const bar = $("menuBar"), stage = menu.parentElement.getBoundingClientRect(), box = menu.getBoundingClientRect();
+    const dx = e.clientX - box.left, dy = e.clientY - box.top;
+    bar.setPointerCapture(e.pointerId);
+    menu.classList.add("dragging");
+    const drag = ev => { menuState.x = ev.clientX - dx - stage.left; menuState.y = ev.clientY - dy - stage.top; placeMenu(); };
+    const drop = () => { menu.classList.remove("dragging"); bar.removeEventListener("pointermove", drag); keepMenu(); };
+    bar.addEventListener("pointermove", drag);
+    bar.addEventListener("pointerup", drop, { once: true });
+    bar.addEventListener("pointercancel", drop, { once: true });
+  });
+  $("menuFold").addEventListener("click", () => foldMenu(!menu.classList.contains("folded")));
+  document.addEventListener("keydown", e => { // O minimizes and restores it, as the game's windows toggle by key
+    if ((e.key === "o" || e.key === "O") && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) foldMenu(!menu.classList.contains("folded"));
+  });
+  window.addEventListener("resize", placeMenu);
+  delete menuState.hidden; // 0.5.489 could hide it; it only minimizes now
+  showTab(menuState.tab || "play");
+  foldMenu(menuState.folded ?? (innerHeight < 520 && innerWidth > innerHeight)); // a phone on its side: the scene first
+
+  // Spheres' files into the page's Lua (fresh each load: edits show on a reload), then the bridge started
+  Promise.all([import("./sim_lua.js"), hostReady]).then(async ([m, h]) => {
+    const [hudAsk, uiAsk] = await Promise.all([m.startLua(h.text), m.startGameUI(h.text)]);
+    askLua = hudAsk;
+    askGameUI = uiAsk;
+    const init = ask("init");
+    if (init.error) { status("Lua: " + init.error); loadFailed("The add-on's Lua stopped: " + init.error); return; }
+    gameUIState = askGameUI(`op=init form=caster s1=wrath level=${Number($("level").value)} statues=${pick("statues")}`);
+    if (gameUIState.error) { status("Game UI Lua: " + gameUIState.error); loadFailed("The add-on UI's Lua stopped: " + gameUIState.error); return; }
+    bounds = init.view;
+    ringGeo = init.rings; // the add-on's ring geometry: the rings' fans laid out as Ring.lua lays them
+    buildSliders(init);
+    ready = true;
+    loading.lua = true;
+    status("");
+  }).catch(e => { status("Lua didn't start: " + e.message); loadFailed("Lua didn't start: " + e.message); });
+  // ------------------------------------------------------------- the fight (sim_fight.js) and its bar (sim_bar.js)
+  let fight = null, bar = null, rings = null, ringGeo = null, frameTop = 120.9, barAt = "", gameUILayoutApplied = false, BARS = {}, fightUntil = -1,
+    aim = { here: false, distance: 99, angle: 0 };
+  const slider = (id, v) => { $(id).value = v; $(id + "Out").textContent = $(id).value + "%"; };
+  function log(text) {
+    const li = document.createElement("li");
+    li.textContent = text;
+    $("combatLog").prepend(li);
+    while ($("combatLog").children.length > 7) $("combatLog").lastChild.remove();
+  }
+  function autoButton() {
+    const on = !!(fight && fight.auto);
+    $("auto").setAttribute("aria-pressed", String(on));
+    $("auto").textContent = on ? "Stop fighting" : "Fight for me";
+  }
+  function castSlot(n) {
+    const id = (BARS[fight.me.form] || [])[n - 1];
+    if (id) fight.cast(id, { ...aim, moving: moving });
+  }
+  let moving = false;
+  // Use the add-on's bevel assets for both finishes, including existing buttons on a style change.
+  const buttonFrameCache = new Map();
+  function buttonFrame(name) {
+    if (!buttonFrameCache.has(name)) buttonFrameCache.set(name, hostReady.then(h => h.image(name)).then(img => {
+      const c = document.createElement("canvas");
+      c.width = img.w;
+      c.height = img.h;
+      c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(img.data.buffer), img.w, img.h), 0, 0);
+      return c.toDataURL();
+    }));
+    return buttonFrameCache.get(name);
+  }
+  async function updateButtonFinish() {
+    const suffix = pick("statues") === "modern" ? "Modern" : "";
+    const [slot, hub] = await Promise.all([buttonFrame("SlotFrame" + suffix), buttonFrame("HubFrame" + suffix)]);
+    if (suffix !== (pick("statues") === "modern" ? "Modern" : "")) return;
+    for (const root of view.querySelectorAll(".hudbar")) root.classList.toggle("modern", suffix === "Modern");
+    for (const edge of view.querySelectorAll(".hudbar .slot .edge")) {
+      edge.src = edge.parentElement.classList.contains("round") ? hub : slot;
+    }
+  }
+  for (const input of document.querySelectorAll('input[name="statues"]')) {
+    input.addEventListener("change", () => {
+      gameUILayoutApplied = false;
+      barAt = "";
+      updateButtonFinish().catch(e => status("Button finish didn't load: " + e.message));
+    });
+  }
+  const slotFrame = buttonFrame("SlotFrame"), hubFrame = buttonFrame("HubFrame");
+  Promise.all([import("./sim_fight.js"), import("./sim_bar.js"), slotFrame, import("./sim_rings.js"), hubFrame]).then(([F, B, frame, Rg, hub]) => {
+    BARS = F.BARS;
+    plateIcon = B.iconURL;
+    fight = F.createFight({
+      say(text, kind) { if (kind === "error") bar.error(text); else log(text); fightUntil = fight.time + 12; },
+      fx(kind, data) { if (world) world.event(kind, data); fightUntil = fight.time + 12; },
+      wound(size) { move.hit = "player"; move.hitSize = size; }, // a blow: the add-on's S.Wound judges it (the glass may crack)
+      shift: formRadios,
+      xp(share) { // a kill's experience; a full bar, the next level (none at the top)
+        const level = Number($("level").value);
+        if (level >= 60) return;
+        let xp = Number($("xp").value) + share;
+        if (xp >= 100) {
+          xp -= 100;
+          $("level").value = level + 1;
+          $("levelOut").textContent = level + 1;
+          log(`Ding! You reach level ${level + 1}.`);
+        }
+        slider("xp", xp);
+      },
+      despawn() { selectedNpc = null; radio("target", "none").checked = true; refreshResets(); },
+      died: onDied,
+      spawn(kind) { // a fight picked: its mob ahead of you, at full health, its sphere whole (no power)
+        selectedNpc = null;
+        radio("target", kind).checked = true;
+        radio("tpower", "none").checked = true;
+        slider("thp", 100);
+        if (world) world.respawn(16);
+        refreshResets();
+      },
+    });
+    fight.me.form = pick("form");
+    bar = B.createBar(view, frame, { cast: id => fight.cast(id, { ...aim, moving }), shift: f => shift(pick("form") === f && f !== "caster" ? "caster" : f),
+      jump, auto: () => $("auto").click(),
+      spawn: () => { if (!fight.me.dead) fight.pick(Math.random() < 0.5 ? "hostile" : "neutral"); } }, TOUCH);
+    rings = Rg.createRings(view.querySelector(".hudbar"), { slot: frame, hub }, {
+      fight: () => fight, cast: id => fight.cast(id, { ...aim, moving }), shift: f => shift(f),
+      ring(name, on) {
+        if (!askGameUI) return null;
+        const state = askGameUI(`op=ring id=${name} open=${on ? 1 : 0}`);
+        if (!state.error) gameUIState = state;
+        return state;
+      } });
+    if (gameUIState) { bar.update(fight, { ...aim, moving }, gameUIState); rings.update(gameUIState, fight.me.form); }
+    updateButtonFinish().catch(e => status("Button finish didn't load: " + e.message));
+    barAt = "";
+    loading.bar = true;
+  }, e => { broken = "The fight didn't load: " + e.message; status(broken); loading.bar = true; });
+  $("pick").addEventListener("click", () => { if (fight) { fight.pick(pick("foe")); view.focus({ preventScroll: true }); } });
+  $("auto").addEventListener("click", () => {
+    if (!fight) return;
+    if (fight.me.dead) { bar.error("You are dead."); return; }
+    fight.auto = !fight.auto;
+    autoButton();
+    view.focus({ preventScroll: true });
+  });
+  // the Target choice by hand: a hostile or neutral one (or a tapped one) can be fought; anything else, none
+  let selectedNpc = null, selectingNpc = false, combatTargetPower = "mana";
+  for (const input of document.querySelectorAll('input[name="target"]')) input.addEventListener("change", () => {
+    if (!selectingNpc) selectedNpc = null;
+    if (fight && !selectingNpc) fight.adopt(input.value === "tapped" ? "hostile" : input.value, Number($("thp").value));
+  });
+  // Each frame: while a fight is on, it moves the sliders (health, the form's power, the target's health);
+  // otherwise it takes them as you set them
+  function fightFrame(dt, state) {
+    if (!fight) return;
+    moving = state.moving;
+    aim = world ? world.target() : { here: false, distance: 99, angle: 0 };
+    const ctx = { ...aim, moving };
+    fight.level = Number($("level").value);
+    if (!fight.knows(pick("form"))) { fight.me.form = "caster"; formRadios("caster"); } // levelled down past your form
+    const on = () => fight.auto || fight.mob.alive && fight.mob.aggro || fight.me.cast || fight.me.hots.length || fight.time < fightUntil;
+    if (!on()) {
+      fight.me.hp = Number($("hp").value);
+      fight.setPower(Number($("pp").value));
+      fight.me.form = pick("form");
+      if (fight.mob.alive) fight.mob.hp = Number($("thp").value);
+    }
+    fight.update(dt, ctx);
+    if (on()) {
+      slider("hp", fight.me.hp.toFixed(1));
+      slider("pp", fight.power().toFixed(1));
+      if (fight.mob.kind) slider("thp", fight.mob.hp.toFixed(1));
+    }
+    bar.update(fight, ctx);
+    rings.update(gameUIState, fight.me.form);
+    if (fight.level !== lastLevel) { lastLevel = fight.level; rings.refresh(); }
+  }
+  let lastLevel = 0;
+
+  // ------------------------------------------------------------- death, as the game's: you fall where your health runs out
+  // (a fight's blow, or Die) and lie there till you release your spirit; then you're a ghost (a night elf's: a wisp, 75%
+  // faster) at a graveyard's spirit healer, the world grey, your corpse where you fell (the minimap's arrow to it, and
+  // the add-on's over the griffin). Within reach of it you may come back there; or the spirit healer brings you back
+  // where it stands (resurrection sickness past level 10). Back with half your health and mana, in your own form.
+  // where your spirit goes: yards north and west of your corpse, past the minimap's reach (233 yards), the corpse
+  // to its lower right (behind the griffin: the add-on's copy of the minimap's arrow shows over it)
+  const GRAVEYARD = [180, 190];
+  const CORPSE_REACH = 40, HEALER_REACH = 7, WISP = 1.75;
+  const life = { state: "alive", corpse: null, healer: null, tp: null, turnJump: 0, popup: "" };
+  const healerDistance = () => (life.healer ? Math.hypot(me.north - life.healer[0], me.west - life.healer[1]) : Infinity);
+  const corpseDistance = () => (life.corpse ? Math.hypot(me.north - life.corpse[0], me.west - life.corpse[1]) : Infinity);
+  const viewRadius = () => (MAP_YARDS / 2) * mapZoom; // the minimap's reach, yards round you
+  function showPopup(text, choices, kind) {
+    $("popupText").textContent = text;
+    $("popupButtons").replaceChildren(...choices.map(([label, act]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.addEventListener("click", () => { act(); view.focus({ preventScroll: true }); });
+      return b;
+    }));
+    $("popup").hidden = false;
+    life.popup = kind;
+  }
+  function hidePopup() { $("popup").hidden = true; life.popup = ""; }
+  // moved at once (released to the graveyard): the Lua side is told the place and, as a turn, the new facing
+  function teleport(north, west, facing) {
+    me.north = north;
+    me.west = west;
+    life.tp = [north, west];
+    life.turnJump += (me.facing - facing) * 180 / Math.PI;
+  }
+  function onDied() {
+    life.state = "dead";
+    life.corpse = [me.north, me.west];
+    life.healer = null;
+    if (move.run) $("run").click();
+    for (const k in keys) keys[k] = false;
+    formRadios("caster");
+    slider("hp", 0);
+    slider("pp", 0);
+    autoButton();
+    closeGossip();
+    showPopup("You have died.", [["Release Spirit", release]], "release");
+  }
+  function release() {
+    if (life.state !== "dead") return;
+    const [cn, cw] = life.corpse;
+    const [gn, gw] = world ? world.collide(cn + GRAVEYARD[0], cw + GRAVEYARD[1], "caster") : [cn + GRAVEYARD[0], cw + GRAVEYARD[1]];
+    life.healer = [gn, gw];
+    const toCorpse = Math.atan2(cw - gw, cn - gn); // you appear by it on your corpse's side, facing it
+    let [sn, sw] = [gn + Math.cos(toCorpse) * 6, gw + Math.sin(toCorpse) * 6];
+    if (world) [sn, sw] = world.collide(sn, sw, "caster");
+    teleport(sn, sw, Math.atan2(gw - sw, gn - sn));
+    life.state = "ghost";
+    hidePopup();
+    log("You are a ghost. Your corpse lies where you fell: the minimap points the way.");
+  }
+  // back to life where you stand: at your corpse ("corpse"), by the spirit healer ("healer"), or as you were (Reset all)
+  function comeBack(where) {
+    if (life.state === "alive") return;
+    life.state = "alive";
+    life.corpse = null;
+    hidePopup();
+    closeGossip();
+    if (fight) fight.revive();
+    formRadios("caster");
+    slider("hp", fight ? fight.me.hp : 50);
+    slider("pp", fight ? fight.me.mana : 50);
+    if (!where) { life.healer = null; return; }
+    if (world) world.event("resurrect", { at: where });
+    $("flash").classList.remove("on");
+    void $("flash").offsetWidth; // the light again
+    $("flash").classList.add("on");
+    const level = Number($("level").value);
+    if (where === "healer" && level > 10) log(`You are afflicted by Resurrection Sickness (${Math.min(10, level - 10)} min).`);
+  }
+  function openGossip() {
+    $("gossip").hidden = false;
+    $("talkHint").hidden = true;
+  }
+  function closeGossip() { $("gossip").hidden = true; }
+  $("gossipClose").addEventListener("click", () => { closeGossip(); view.focus({ preventScroll: true }); });
+  $("gossipRevive").addEventListener("click", () => {
+    closeGossip();
+    const level = Number($("level").value), mins = Math.min(10, level - 10);
+    showPopup(level > 10
+      ? `Return to life now? You will suffer Resurrection Sickness for ${mins} minute${mins > 1 ? "s" : ""}, and your equipped items lose 25% durability.`
+      : "Return to life now?", [["Accept", () => comeBack("healer")], ["Decline", hidePopup]], "healer");
+  });
+  // talking to the spirit healer: clicking or tapping it, or F, near it
+  function talk() {
+    if (life.state !== "ghost") return false;
+    if (healerDistance() > HEALER_REACH) { if (bar) bar.error("You are too far away."); return false; }
+    openGossip();
+    return true;
+  }
+  let targetedDead = false; // a corpse you clicked: targeted dead, in the card at the top
+  function selectWorldTarget(hit) {
+    if (!selectedNpc && pick("target") !== "none") combatTargetPower = pick("tpower");
+    selectedNpc = hit.type === "npc" ? { id: hit.id, name: hit.name, reaction: hit.reaction, kind: hit.kind } : null;
+    selectingNpc = true;
+    try { setControl("target", hit.reaction); }
+    finally { selectingNpc = false; }
+    slider("thp", (hit.health ?? 1) * 100);
+    setControl("tpower", selectedNpc ? "none" : combatTargetPower);
+    targeted = true;
+    targetedDead = false;
+    clickAt = null;
+    refreshResets();
+    return true;
+  }
+  function cycleTarget(backward = false) {
+    if (!world || life.state !== "alive") return;
+    const candidates = world.targetCandidates();
+    if (!candidates.length) return;
+    const current = targeted ? selectedNpc?.id || (pick("target") !== "none" ? "target" : null) : null;
+    const index = candidates.findIndex(unit => unit.id === current);
+    const next = index < 0 ? (backward ? candidates.length - 1 : 0)
+      : (index + (backward ? -1 : 1) + candidates.length) % candidates.length;
+    selectWorldTarget(candidates[next]);
+  }
+  function clickWorld(cx, cy) {
+    if (!world) return false;
+    const box = world.canvas.getBoundingClientRect();
+    const hit = world.pick(((cx - box.left) / box.width) * 2 - 1, -(((cy - box.top) / box.height) * 2 - 1));
+    if (hit === "healer" && life.state === "ghost") return talk(), true;
+    if (hit && hit.type === "npc") return selectWorldTarget(hit);
+    if (hit === "target") {
+      const living = world.targetCandidates().find(unit => unit.id === "target");
+      if (living) return selectWorldTarget(living);
+    }
+    if (hit === "target" && Number($("thp").value) <= 0 && pick("tstyle") === "nameplate") { // a corpse clicked: its card there
+      const v = view.getBoundingClientRect();
+      targeted = true;
+      clickAt = { x: cx - v.left, y: cy - v.top };
+      return true;
+    }
+    if (hit === "target" && !targeted) { targeted = true; targetedDead = true; return true; } // a cleared corpse: at the top
+    return false;
+  }
+  $("die").addEventListener("click", () => { if (fight) fight.kill(); });
+  // each frame: within reach of your corpse its question shows, out of it it goes; near the healer a hint
+  function lifeFrame() {
+    if (life.state === "ghost") {
+      const near = corpseDistance() <= CORPSE_REACH;
+      if (near && life.popup !== "corpse" && life.popup !== "healer") showPopup("Resurrect now?", [["Accept", () => comeBack("corpse")]], "corpse");
+      else if (!near && life.popup === "corpse") hidePopup();
+      const hint = healerDistance() <= HEALER_REACH * 2 && $("gossip").hidden;
+      if (hint) $("talkHint").textContent = TOUCH ? "Tap the Spirit Healer to talk" : "Right-click the Spirit Healer to talk (or press F)";
+      $("talkHint").hidden = !hint;
+    } else $("talkHint").hidden = true;
+    if (life.state === "alive" && life.healer && healerDistance() > 150) life.healer = null; // the graveyard left far behind
+  }
+  // The minimap's own arrow to your corpse (the game draws it; Blizzard's art isn't ours: a drawn one), at its edge
+  // while the corpse is past its reach; the griffin covers it at the lower right, where the add-on draws its copy over it.
+  const turnedUV = (uv, angle) => { // Texture:SetRotation as the bridge turns texture coordinates
+    const cu = (uv[0] + uv[6]) / 2, cv = (uv[1] + uv[7]) / 2, c = Math.cos(angle), sn = Math.sin(angle), out = [];
+    for (let i = 0; i < 8; i += 2) { const du = uv[i] - cu, dv = uv[i + 1] - cv; out.push(cu + du * c - dv * sn, cv + du * sn + dv * c); }
+    return out;
+  };
+  function drawMapMarks(map) {
+    const [l, b, r, t] = map.r, cx = (l + r) / 2, cy = (b + t) / 2;
+    const uv = [0, 0, 0, 1, 1, 0, 1, 1];
+    const dQN = QUEST.north - me.north, dQW = QUEST.west - me.west;
+    const questDistance = Math.hypot(dQN, dQW), questAngle = Math.atan2(dQN, -dQW);
+    const questReach = Math.min(questDistance / viewRadius(), 0.82) * (r - l) / 2;
+    const qx = cx + questReach * Math.cos(questAngle), qy = cy + questReach * Math.sin(questAngle);
+    const questHalf = 17;
+    drawItem({ f: "@questarrow", r: [qx - questHalf, qy - questHalf, qx + questHalf, qy + questHalf],
+      uv: turnedUV(uv, questAngle - Math.PI / 2), c: [1, 1, 1], a: 1, m: map.m });
+    const playerHalf = 16;
+    drawItem({ f: "@playerarrow", r: [cx - playerHalf, cy - playerHalf, cx + playerHalf, cy + playerHalf],
+      uv: turnedUV(uv, me.facing), c: [1, 1, 1], a: 1, m: map.m });
+    if (life.state !== "ghost" || !life.corpse) return;
+    const dN = life.corpse[0] - me.north, dW = life.corpse[1] - me.west, far = Math.hypot(dN, dW);
+    const angle = Math.atan2(dN, -dW);
+    if (far <= viewRadius()) { // within it the game shows the corpse itself: a small mark where it lies (a stand-in)
+      const k = (r - l) / 2 / viewRadius(), x = (l + r) / 2 - dW * k, y = (b + t) / 2 + dN * k;
+      drawItem({ f: "@corpse", r: [x - 5, y - 5, x + 5, y + 5], uv: [0, 0, 0, 1, 1, 0, 1, 1], c: [1, 1, 1], a: 1, m: map.m });
+      return;
+    }
+    const reach = (r - l) / 2 * 0.82, half = 17;
+    const x = (l + r) / 2 + reach * Math.cos(angle), y = (b + t) / 2 + reach * Math.sin(angle);
+    drawItem({ f: "@deadarrow", r: [x - half, y - half, x + half, y + half], uv: turnedUV([0, 0, 0, 1, 1, 0, 1, 1], angle - Math.PI / 2),
+      c: [1, 1, 1], a: 1, m: [] });
+  }
+  // stand-ins for Blizzard's art in the level well: the combat swords (UI-HUD-UnitFrame-Player-CombatIcon), the rest
+  // bubble (UI-StateIcon: the add-on shows its top left quarter)
+  function combatIcon() {
+    const n = 64, c = document.createElement("canvas");
+    c.width = c.height = n;
+    const g = c.getContext("2d");
+    for (const side of [-1, 1]) {
+      g.save();
+      g.translate(n / 2, n / 2);
+      g.rotate(side * Math.PI / 4);
+      g.fillStyle = "#e8d9a8";
+      g.strokeStyle = "rgba(40, 20, 6, 0.9)";
+      g.lineWidth = 3;
+      g.beginPath(); g.moveTo(-4, -26); g.lineTo(4, -26); g.lineTo(4, 10); g.lineTo(0, 15); g.lineTo(-4, 10); g.closePath(); g.stroke(); g.fill();
+      g.fillStyle = "#d29a2e";
+      g.fillRect(-11, 10, 22, 5);
+      g.fillRect(-3, 15, 6, 12);
+      g.restore();
+    }
+    return { w: n, h: n, source: c };
+  }
+  function restIcon() {
+    const n = 64, c = document.createElement("canvas");
+    c.width = c.height = n;
+    const g = c.getContext("2d"), w = n * 0.5, h = n * 0.421875; // where the add-on's coordinates look
+    g.fillStyle = "#f2d675";
+    g.strokeStyle = "rgba(40, 24, 6, 0.9)";
+    g.lineWidth = 2;
+    g.font = `bold ${Math.round(h * 0.62)}px Georgia, serif`;
+    g.textBaseline = "middle";
+    g.strokeText("z", w * 0.18, h * 0.62); g.fillText("z", w * 0.18, h * 0.62);
+    g.font = `bold ${Math.round(h * 0.44)}px Georgia, serif`;
+    g.strokeText("z", w * 0.58, h * 0.32); g.fillText("z", w * 0.58, h * 0.32);
+    return { w: n, h: n, source: c };
+  }
+  function corpseMark() { // your corpse on the minimap within its reach: a small dark red diamond (a stand-in)
+    const n = 32, c = document.createElement("canvas");
+    c.width = c.height = n;
+    const g = c.getContext("2d");
+    g.beginPath(); g.moveTo(16, 3); g.lineTo(29, 16); g.lineTo(16, 29); g.lineTo(3, 16); g.closePath();
+    g.lineWidth = 3; g.strokeStyle = "rgba(20, 4, 2, 0.9)"; g.stroke();
+    g.fillStyle = "#e0402e"; g.fill();
+    return { w: n, h: n, source: c };
+  }
+  // the minimap's corpse arrow, a drawn stand-in pointing up
+  function arrowImage(dark, light) {
+    const n = 64, c = document.createElement("canvas");
+    c.width = c.height = n;
+    const g = c.getContext("2d"), grad = g.createLinearGradient(0, 8, 0, 56);
+    grad.addColorStop(0, light);
+    grad.addColorStop(1, dark);
+    g.beginPath();
+    g.moveTo(32, 7); g.lineTo(53, 55); g.lineTo(32, 43); g.lineTo(11, 55); g.closePath();
+    g.lineJoin = "round";
+    g.lineWidth = 4;
+    g.strokeStyle = "rgba(20, 4, 2, 0.9)";
+    g.stroke();
+    g.fillStyle = grad;
+    g.fill();
+    g.beginPath(); g.moveTo(32, 12); g.lineTo(16, 50); g.lineTo(32, 40); g.closePath(); // its lit side
+    g.fillStyle = "rgba(255, 255, 255, 0.22)";
+    g.fill();
+    return { w: n, h: n, source: c };
+  }
+
+  // ------------------------------------------------------------- Target Style "Nameplate" (Target.lua's): the target's name,
+  // health and power where its nameplate is, in the add-on's own bars (Media/Bar*: a dark shape, the fill cropped to
+  // the value, glass, the brass rim); off screen at its edge toward the target (the game's nameplateTargetRadialPosition:
+  // round the sides and the bottom), farther than a nameplate reaches (45 yards), or dead: the screen's middle. The game
+  // keeps a boss's at the top (no boss here).
+  const PLATE_REACH = 45, PLATE_MIDDLE = 140, PLATE_SCALE = 0.8; // yards; units over the middle; the card's scale
+  const PLATE_HEALTH = { hostile: [0.78, 0.07, 0.045], neutral: [0.72, 0.38, 0.055], friendly: [0.15, 0.62, 0.12], tapped: [0.5, 0.5, 0.5] };
+  const PLATE_NAME = { hostile: "#ff3333", tapped: "#ff3333", neutral: "#ffd933", friendly: "#4dff4d" };
+  const PLATE_POWER = { mana: [0.045, 0.22, 0.82], rage: [1, 0, 0] };
+  let plateIcon = null; // sim_bar.js iconURL, once the bar's loaded
+  const targetAvatarCache = {};
+  function targetAvatar(kind) {
+    kind = kind === "furbolg" ? "gnarlpine" : kind;
+    if (targetAvatarCache[kind]) return targetAvatarCache[kind];
+    const c = document.createElement("canvas");
+    c.width = c.height = 96;
+    const g = c.getContext("2d"), elf = kind === "sentinel", cat = kind === "nightsaber";
+    const skin = elf ? "#8d83b5" : cat ? "#727b9d" : "#79543d";
+    const bg = g.createRadialGradient(43, 35, 5, 48, 48, 65);
+    bg.addColorStop(0, elf ? "#394e5f" : cat ? "#424362" : "#4c4634");
+    bg.addColorStop(1, "#10151c");
+    g.fillStyle = bg; g.fillRect(0, 0, 96, 96);
+    g.lineWidth = 3; g.strokeStyle = "#13171e";
+    const ellipse = (x, y, rx, ry, color) => {
+      g.fillStyle = color; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    };
+    const shape = (color, points) => {
+      g.fillStyle = color; g.beginPath();
+      points.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
+      g.closePath(); g.fill(); g.stroke();
+    };
+    ellipse(48, 94, 37, 22, elf ? "#315252" : cat ? "#434a65" : "#493c2c");
+    if (elf) {
+      shape(skin, [[30, 36], [6, 28], [28, 57]]);
+      shape(skin, [[66, 36], [90, 28], [68, 57]]);
+    } else if (cat) {
+      shape(skin, [[23, 37], [20, 8], [43, 28]]);
+      shape(skin, [[53, 28], [76, 8], [73, 37]]);
+    } else {
+      ellipse(27, 27, 12, 13, skin); ellipse(69, 27, 12, 13, skin);
+    }
+    ellipse(48, 49, 25, 31, skin);
+    if (elf) {
+      shape("#29494b", [[22, 43], [25, 15], [48, 10], [72, 20], [76, 43], [59, 28], [37, 26]]);
+      shape("#29494b", [[23, 35], [31, 37], [29, 81], [19, 85]]);
+      shape("#29494b", [[66, 34], [74, 37], [78, 85], [67, 80]]);
+    } else {
+      ellipse(48, 64, 18, 14, cat ? "#b4b8c9" : "#b2916c");
+      shape("#26252b", [[41, 57], [55, 57], [48, 65]]);
+      if (cat) {
+        g.strokeStyle = "#464966";
+        for (const side of [-1, 1]) for (const y of [33, 39]) {
+          g.beginPath(); g.moveTo(48 + side * 10, y); g.lineTo(48 + side * 23, y - 4); g.stroke();
+        }
+      }
+    }
+    g.strokeStyle = "#161923"; g.lineWidth = 3;
+    g.fillStyle = elf ? "#f3dc6e" : "#e7c85a";
+    for (const x of [37, 59]) {
+      g.beginPath(); g.ellipse(x, 47, elf ? 6 : 5, 3, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(x - 6, 42); g.lineTo(x + 5, 44); g.stroke();
+    }
+    g.beginPath(); g.moveTo(42, 72); g.quadraticCurveTo(48, 75, 54, 72); g.stroke();
+    return targetAvatarCache[kind] = { w: 96, h: 96, source: c, url: c.toDataURL() };
+  }
+  const barArt = {}; // the bars' textures, as canvases
+  function barImage(name) {
+    if (barArt[name] === undefined && host) {
+      barArt[name] = null;
+      host.image(name).then(img => {
+        const c = document.createElement("canvas");
+        c.width = img.w;
+        c.height = img.h;
+        c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(img.data.buffer), img.w, img.h), 0, 0);
+        barArt[name] = c;
+      }, () => {});
+    }
+    return barArt[name] || null;
+  }
+  const tinted = {};
+  function tintedFill(kind, rgb) { // the fill in its colour, as the game's vertex colour multiplies it
+    const key = kind + rgb.join(","), src = barImage("BarFill" + kind);
+    if (!src) return null;
+    if (!tinted[key]) {
+      const c = document.createElement("canvas");
+      c.width = src.width;
+      c.height = src.height;
+      const g = c.getContext("2d");
+      g.drawImage(src, 0, 0);
+      g.globalCompositeOperation = "multiply";
+      g.fillStyle = `rgb(${rgb.map(v => Math.round(v * 255)).join(",")})`;
+      g.fillRect(0, 0, c.width, c.height);
+      g.globalCompositeOperation = "destination-in";
+      g.drawImage(src, 0, 0);
+      tinted[key] = c;
+    }
+    return tinted[key];
+  }
+  function drawPlateBar(canvas, kind, h, share, rgb) {
+    const unit = ppu / pixelRatio() * PLATE_SCALE, pad = 2.5, dpr = pixelRatio();
+    const w = 148, cw = (w + 2 * pad) * unit, ch = (h + 2 * pad) * unit;
+    const key = [kind, share.toFixed(3), rgb.join(","), cw.toFixed(1)].join("|");
+    const shape = barImage("BarShape" + kind), fill = tintedFill(kind, rgb), gloss = barImage("BarGloss" + kind), rim = barImage("BarRim" + kind);
+    if (!(shape && fill && gloss && rim) || canvas.dataset.key === key) return;
+    canvas.dataset.key = key;
+    canvas.style.width = cw + "px";
+    canvas.style.height = ch + "px";
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(ch * dpr);
+    const g = canvas.getContext("2d"), u = unit * dpr, x = pad * u, y = pad * u, bw = w * u, bh = h * u;
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.globalAlpha = 0.75; // the dark track
+    g.filter = "brightness(0)";
+    g.drawImage(shape, x, y, bw, bh);
+    g.filter = "none";
+    g.globalAlpha = 1;
+    if (share > 0) g.drawImage(fill, 0, 0, fill.width * share, fill.height, x, y, bw * share, bh); // cropped, as a status bar
+    g.drawImage(gloss, x, y, bw, bh);
+    g.drawImage(rim, 0, 0, canvas.width, canvas.height);
+  }
+  // A target that dies is cleared (Target.lua's, 0.5.504: "when target is dead. just clear target. And if people tries to
+  // target then show the card on top"): it stays on the ground, not targeted (no card, no ring); clicking it targets it
+  // again, in the card at the top (the sphere here). `targeted`: false once cleared.
+  // A click on the corpse puts its card where you clicked, a little over it (0.5.505: "we can place the target to where
+  // mouse clicked (like how body loot get's opened)"; Target.lua CLICK_UP): `clickAt`, CSS px in the scene.
+  let targeted = true, lastLook = "none", clickAt = null;
+  const CLICK_UP = 34;
+  function placePlate() {
+    const el = $("plate"), look = pick("target"), plates = pick("tstyle") === "nameplate";
+    if (look !== lastLook) { lastLook = look; targeted = true; clickAt = null; } // another target: targeted
+    const actual = gameUIState && gameUIState.target;
+    const dead = actual ? actual.dead : look !== "none" && Number($("thp").value) <= 0;
+    if (plates && dead && targeted && !targetedDead && !clickAt) targeted = false; // it died while targeted: cleared
+    if (!dead) { targetedDead = false; clickAt = null; }
+    const p = plates && look !== "none" && targeted && world && life.state === "alive" && (!dead || clickAt) ? world.plateAt() : null;
+    if (!p || actual && !actual.shown) { el.hidden = true; return; }
+    const vw = view.clientWidth, vh = view.clientHeight;
+    let x = p.x * vw, y = p.y * vh;
+    if (dead) { x = clickAt.x; y = clickAt.y - CLICK_UP * ppu / pixelRatio() * PLATE_SCALE; } // where you clicked its body
+    else if (p.distance > PLATE_REACH) { x = vw / 2; y = vh / 2 - PLATE_MIDDLE * ppu / pixelRatio(); } // no plate
+    else {
+      const left = 0.06 * vw, right = 0.94 * vw, top = 0.08 * vh, bottom = 0.9 * vh; // the game's insets
+      if (!dead && (!p.ahead || x < left || x > right || y < top || y > bottom)) {
+        let dx = x - vw / 2, dy = y - vh / 2;
+        if (!p.ahead) { dx = -dx; dy = Math.abs(dy) + vh; } // behind you: toward the bottom, on its side
+        const kx = dx > 0 ? (right - vw / 2) / dx : dx < 0 ? (left - vw / 2) / dx : Infinity;
+        const ky = dy > 0 ? (bottom - vh / 2) / dy : dy < 0 ? (top - vh / 2) / dy : Infinity;
+        const k = Math.min(kx, ky);
+        x = vw / 2 + dx * k;
+        y = vh / 2 + dy * k;
+      }
+    }
+    el.hidden = false;
+    const hw = el.offsetWidth / 2, hh = el.offsetHeight / 2; // all of it on the screen, as the game clamps it
+    if (dead) y -= hh; // its bottom over the click
+    el.style.left = Math.max(hw, Math.min(vw - hw, x)) + "px";
+    el.style.top = Math.max(hh, Math.min(vh - hh, y)) + "px";
+    const names = { hostile: "Gnarlpine Warrior", tapped: "Gnarlpine Warrior", neutral: "Nightsaber", friendly: "Darnassian Sentinel" };
+    $("plateName").textContent = actual && actual.name || selectedNpc && selectedNpc.name || names[look];
+    const tint = (rgb, fallback) => rgb && `rgb(${rgb.slice(0, 3).map(v => Math.round(v * 255)).join(" ")})` || fallback;
+    $("plateName").style.color = tint(actual && actual.nameColor, PLATE_NAME[look]);
+    const unit = ppu / pixelRatio() * PLATE_SCALE, face = $("plateFace");
+    $("plateName").style.fontSize = Math.max(10, 16 * unit) + "px"; // GameFontNormalLarge
+    // its debuffs over its name: what the fight put on it (Moonfire, Rake), the bar's own icons
+    const dots = fight && plateIcon && fight.mob.alive ? fight.mob.dots.map(d => d.id) : [], key = dots.join(",") + "|" + unit.toFixed(2);
+    if ($("plateAuras").dataset.key !== key) {
+      $("plateAuras").dataset.key = key;
+      $("plateAuras").replaceChildren(...dots.map(id => {
+        const img = document.createElement("img");
+        img.src = plateIcon(id);
+        img.alt = "";
+        img.style.width = img.style.height = 22 * unit + "px";
+        return img;
+      }));
+    }
+    face.style.width = face.style.height = 60 * unit + "px"; // Target.lua PLATE_FACE
+    const avatar = selectedNpc?.kind || (look === "friendly" ? "sentinel" : look === "neutral" ? "nightsaber" : "gnarlpine");
+    face.style.background = `url("${targetAvatar(avatar).url}") center / cover no-repeat`;
+    face.style.borderColor = pick("statues") === "modern" ? "#8f9da9" : "#c9a24a";
+    face.dataset.avatar = avatar;
+    drawPlateBar($("plateHealth"), "Health", 18, actual ? actual.health : $("thp").value / 100,
+      actual && actual.healthColor ? actual.healthColor : PLATE_HEALTH[look]);
+    const tp = pick("tpower");
+    const hasPower = actual ? actual.powerShown : tp !== "none";
+    $("platePower").hidden = !hasPower;
+    if (hasPower) drawPlateBar($("platePower"), "Power", 11, actual ? actual.power : $("tpp").value / 100,
+      actual && actual.powerColor ? actual.powerColor : PLATE_POWER[tp]);
+  }
+
+  // ------------------------------------------------------------- the test hook: tools/sim_mcp.py drives the page through
+  // it (state as JSON; controls set as you would, their events fired; the Lua side asked)
+  function setControl(key, value) {
+    const group = document.querySelectorAll(`input[type="radio"][name="${key}"]`);
+    if (group.length) {
+      const input = [...group].find(i => i.value === String(value));
+      if (!input) return `${key}: no choice ${value} (${[...group].map(i => i.value).join(", ")})`;
+      input.checked = true;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return null;
+    }
+    const input = $(key);
+    if (!input || input.tagName !== "INPUT") return `${key}: no such control`;
+    if (input.type === "checkbox") { input.checked = !!value; input.dispatchEvent(new Event("change", { bubbles: true })); }
+    else { input.value = value; input.dispatchEvent(new Event("input", { bubbles: true })); }
+    return null;
+  }
+  window.wowHudSim = {
+    ready: () => !!(ready && world && fight && bar),
+    state() {
+      const controls = {};
+      for (const i of document.querySelectorAll("#menu input")) {
+        if (i.type === "radio") { if (i.checked) controls[i.name] = i.value; }
+        else if (i.type === "range") controls[i.id] = Number(i.value);
+        else if (i.type === "checkbox") controls[i.id] = i.checked;
+      }
+      const m = fight && fight.me, mob = fight && fight.mob;
+      const selectedTarget = world && targeted ? world.targetCandidates().find(unit => unit.id === (selectedNpc?.id || "target")) : null;
+      return {
+        ready: this.ready(), status: $("status").textContent, controls,
+        you: m && { form: m.form, hp: +m.hp.toFixed(1), mana: +m.mana.toFixed(1), rage: +m.rage.toFixed(1), energy: +m.energy.toFixed(1),
+          combo: m.combo, casting: m.cast && m.cast.id, gcd: Math.max(0, +(m.gcd - fight.time).toFixed(2)) },
+        mob: mob && { kind: mob.kind, alive: mob.alive, hp: +mob.hp.toFixed(1), aggro: mob.aggro, dots: mob.dots.map(d => d.id) },
+        selection: targeted && pick("target") !== "none" ? {
+          id: selectedNpc?.id || "target", name: selectedNpc?.name || selectedTarget?.name || $("plateName").textContent,
+          avatar: selectedNpc?.kind || (pick("target") === "friendly" ? "sentinel" : pick("target") === "neutral" ? "nightsaber" : "gnarlpine"),
+        } : null,
+        targets: world ? world.targetCandidates() : [],
+        aim: { here: aim.here, distance: +aim.distance.toFixed(2), angle: +aim.angle.toFixed(3) },
+        auto: !!(fight && fight.auto),
+        bar: [...document.querySelectorAll(".hudbar .slot:not([hidden])")].map(b => ({ id: b.dataset.id, key: b.querySelector(".key").textContent,
+          classes: [...b.classList].filter(c => c !== "slot") })),
+        log: [...$("combatLog").children].map(li => li.textContent),
+        error: (document.querySelector(".hudbar .errors") || {}).textContent || "",
+        position: { facing: +me.facing.toFixed(3), north: +me.north.toFixed(2), west: +me.west.toFixed(2) },
+        camera: { ...cam },
+        menu: { tab: menuState.tab, folded: menu.classList.contains("folded") },
+        rings: rings ? rings.state() : null,
+        hud: items ? { textures: items.filter(it => it.f).length, files: [...new Set(items.filter(it => it.f).map(it => it.f))].sort(),
+          text: items.filter(it => it.t !== undefined).map(it => it.t).join("") } : null,
+        layout: { dpr: pixelRatio(), ppu, hudTopCss: (hudTop || bounds[3]) * ppu / pixelRatio(), touch: TOUCH },
+        life: { state: life.state, corpse: life.corpse, healer: life.healer, popup: life.popup, gossip: !$("gossip").hidden,
+          corpseDistance: life.corpse ? +corpseDistance().toFixed(1) : null, healerDistance: life.healer ? +healerDistance().toFixed(1) : null },
+        light: fx.now.LIGHT || null,
+      };
+    },
+    // a step of dying and coming back: die, release, accept (the shown dialog's first button), talk (the spirit
+    // healer, near it), revive (its option), near (stand by your corpse or the healer: "corpse" | "healer")
+    life(action, where) {
+      const press = () => { const b = $("popupButtons").firstChild; if (b && !$("popup").hidden) b.click(); };
+      if (action === "die") { if (fight) fight.kill(); }
+      else if (action === "release") release();
+      else if (action === "accept") press();
+      else if (action === "talk") talk();
+      else if (action === "revive") $("gossipRevive").click();
+      else if (action === "near") {
+        const to = where === "healer" ? life.healer : life.corpse;
+        if (to) teleport(to[0] + 3, to[1], Math.atan2(to[1] - to[1], -3));
+      } else return `no step ${action} (die, release, accept, talk, revive, near)`;
+      return this.state().life;
+    },
+    // where the target is on the page (CSS px): its nameplate's place, or its body's (body: true); null without one
+    targetPoint(body) {
+      const p = world && world.plateAt(body ? 0.4 : undefined), v = view.getBoundingClientRect();
+      return p && { x: v.left + p.x * v.width, y: v.top + p.y * v.height, ahead: p.ahead, distance: +p.distance.toFixed(1), targeted };
+    },
+    // the light on the glass (the Light group's dial): x, y of the unit circle, toward you the rest
+    light(x, y) { setLight(x, y); return fx.now.LIGHT; },
+    // where a texture the HUD draws is on the page (CSS px: x, y, width, height), by its file ("GlassMap"), or null
+    box(file) {
+      const it = items && items.find(i => i.f === file);
+      if (!it) return null;
+      const c = canvas.getBoundingClientRect(), dpr = pixelRatio(), [l, b, r, t] = it.r;
+      const x0 = (origin[0] + l * ppu) / dpr, x1 = (origin[0] + r * ppu) / dpr;
+      const y0 = c.height - (origin[1] + t * ppu) / dpr, y1 = c.height - (origin[1] + b * ppu) / dpr;
+      return { x: c.left + x0, y: c.top + y0, width: x1 - x0, height: y1 - y0 };
+    },
+    // a texture's pixels from a PNG (base64: 8-bit RGBA, as make site writes them), or the add-on's again (null): for
+    // mockups of art not made yet, drawn where the add-on lays that texture out
+    async texture(name, png) {
+      if (png) {
+        const { decodePNG } = await import("./sim_media.js");
+        images[name] = await decodePNG(Uint8Array.from(atob(png), c => c.charCodeAt(0)).buffer, name);
+      } else delete images[name];
+      for (const key of Object.keys(textures)) if (key.startsWith(name + "|")) { gl.deleteTexture(textures[key]); delete textures[key]; }
+      return true;
+    },
+    set(values) { return Object.entries(values).map(([k, v]) => setControl(k, v)).filter(Boolean); },
+    ask: line => ask(line),
+    cast: id => (fight ? fight.cast(id, { ...aim, moving }) : false),
+  };
+
+  // On a short screen the HUD (and the touch row) reach past where you stand (the world puts your feet 64% down
+  // its picture): the picture is raised until you stand clear above them (device px)
+  function raiseFor() {
+    const dpr = pixelRatio(), viewH = view.clientHeight;
+    const blocked = Math.max((frameTop - (ringGeo ? ringGeo.sink : 10)) * ppu / dpr, bar ? bar.rowTop() : 0);
+    return Math.max(0, 0.64 * viewH - (viewH - blocked - 16)) * dpr;
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
+    last = now;
+    pendingDt += dt;
+    const state = inputs(dt);
+    fightFrame(dt, state);
+    sendFrame(state);
+    const since = clock - move.jumpAt; // the 3D world: where you are, what you do, your form and pet
+    now3d = { facing: me.facing, north: me.north, west: me.west, fwd: state.fwd, lat: state.lat, air: inAir(),
+      jump: since < 0.72 ? since : -1, form: pick("form"), pet: pick("pet"), target: pick("target"), thp: $("thp").value / 100, dt,
+      targetNpc: targeted && selectedNpc ? selectedNpc.id : "none",
+      orbit: cam.orbit * Math.PI / 180, tilt: cam.tilt * Math.PI / 180, zoom: cam.zoom, raise: raiseFor(),
+      fight: fight ? { aggro: fight.mob.alive && fight.mob.aggro, kind: fight.mob.kind, health: fight.mob.hp / 100 } : null,
+      life: life.state, healer: life.healer,
+      plates: pick("tstyle") === "nameplate", selected: targeted };
+    lifeFrame();
+    draw();
+    placePlate();
+    loadingFrame();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
